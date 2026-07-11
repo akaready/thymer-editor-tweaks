@@ -1792,7 +1792,7 @@ var plugins = (() => {
   var INDENT_BODY_CLASS = "plg-et-indent";
   var SETTINGS_STYLE_ID = "et-settings-style";
   var PANEL_SELECTOR = ".panel";
-  var HANDLE_SELECTOR = ".item-drag-handle.link-menu-opener";
+  var HANDLE_SELECTOR = ".item-drag-handle.link-menu-opener:not(.options-cell-handle)";
   var LIVE_HANDLE_SELECTOR = `${HANDLE_SELECTOR}:not(.is-br):not(.lineitem-lineref)`;
   var INLINE_REF_GUARD = ".lineitem-lineref, .lineitem-ref, .lineitem-ref-title, .lineitem-hashtag, .lineitem-hashtag-input";
   var CHEVRON_SELECTOR = ".line-fold-chevron";
@@ -2782,7 +2782,7 @@ var plugins = (() => {
       }
       if (settings.alignHandleToCaret) {
         rules.push(`
-				body.${BODY_CLASS} .item-drag-handle {
+				body.${BODY_CLASS} .item-drag-handle:not(.options-cell-handle) {
 					top: ${settings.handleAlignTop}px !important;
 					left: ${settings.handleAlignLeft}px !important;
 				}
