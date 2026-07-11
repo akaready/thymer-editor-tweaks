@@ -1785,7 +1785,7 @@ var plugins = (() => {
   __name(syncPluginVersionOnLoad, "syncPluginVersionOnLoad");
 
   // plugin.js
-  var PLUGIN_VERSION = "1.0.1";
+  var PLUGIN_VERSION = "1.0.2";
   var ROOT_CLASS = "plg-editor-tweaks";
   var PANEL_TYPE = "editor-tweaks-settings";
   var BODY_CLASS = "et-enabled";
@@ -1793,6 +1793,7 @@ var plugins = (() => {
   var SETTINGS_STYLE_ID = "et-settings-style";
   var PANEL_SELECTOR = ".panel";
   var HANDLE_SELECTOR = ".item-drag-handle.link-menu-opener:not(.options-cell-handle)";
+  var TABLE_HANDLE_SELECTOR = ".options-cell-handle.item-drag-handle.link-menu-opener";
   var LIVE_HANDLE_SELECTOR = `${HANDLE_SELECTOR}:not(.is-br):not(.lineitem-lineref)`;
   var INLINE_REF_GUARD = ".lineitem-lineref, .lineitem-ref, .lineitem-ref-title, .lineitem-hashtag, .lineitem-hashtag-input";
   var CHEVRON_SELECTOR = ".line-fold-chevron";
@@ -2379,7 +2380,7 @@ var plugins = (() => {
       const target = event.target;
       if (!(target instanceof Element)) return null;
       if (target.closest(INLINE_REF_GUARD)) return null;
-      const handle = target.closest(HANDLE_SELECTOR);
+      const handle = target.closest(`${HANDLE_SELECTOR}, ${TABLE_HANDLE_SELECTOR}`);
       if (!(handle instanceof HTMLElement)) return null;
       if (handle.classList.contains("is-br")) return null;
       return handle;
@@ -2922,7 +2923,11 @@ var plugins = (() => {
             }),
             check("hidePersistentExpandedCaret", "Hide persistent caret for expanded lines"),
             check("hideHoverBackground", "No hover background on handle & chevron"),
-            check("altClickOpensMenu", "Click handle to zoom (\u2325-click opens menu)"),
+            check(
+              "altClickOpensMenu",
+              "Click handle to zoom (\u2325-click opens menu)",
+              "Applies in the editor and to table-view row handles. Press-and-hold still grabs for drag."
+            ),
             check(
               "alignControlsToTopLine",
               "Align hover controls to top line",
@@ -3237,6 +3242,24 @@ var plugins = (() => {
 			body.${BODY_CLASS}[data-et-pressing="true"] ${LIVE_HANDLE_SELECTOR},
 			body.${BODY_CLASS}[data-et-pressing="true"] ${LIVE_HANDLE_SELECTOR}:hover,
 			body.${BODY_CLASS}[data-et-pressing="true"] ${LIVE_HANDLE_SELECTOR} * {
+				cursor: grabbing !important;
+			}
+
+			/* Table-view row handles: same swap cursors, but ONLY while the
+			   click-to-zoom swap is on \u2014 off leaves tables fully native. */
+			body.${BODY_CLASS}[data-et-alt-click-menu="true"] ${TABLE_HANDLE_SELECTOR},
+			body.${BODY_CLASS}[data-et-alt-click-menu="true"] ${TABLE_HANDLE_SELECTOR}:hover,
+			body.${BODY_CLASS}[data-et-alt-click-menu="true"] ${TABLE_HANDLE_SELECTOR} * {
+				cursor: var(--et-cursor-zoom, zoom-in) !important;
+			}
+			body.${BODY_CLASS}[data-et-alt-click-menu="true"][data-et-alt="true"] ${TABLE_HANDLE_SELECTOR},
+			body.${BODY_CLASS}[data-et-alt-click-menu="true"][data-et-alt="true"] ${TABLE_HANDLE_SELECTOR}:hover,
+			body.${BODY_CLASS}[data-et-alt-click-menu="true"][data-et-alt="true"] ${TABLE_HANDLE_SELECTOR} * {
+				cursor: var(--et-cursor-menu, pointer) !important;
+			}
+			body.${BODY_CLASS}[data-et-pressing="true"] ${TABLE_HANDLE_SELECTOR},
+			body.${BODY_CLASS}[data-et-pressing="true"] ${TABLE_HANDLE_SELECTOR}:hover,
+			body.${BODY_CLASS}[data-et-pressing="true"] ${TABLE_HANDLE_SELECTOR} * {
 				cursor: grabbing !important;
 			}
 
