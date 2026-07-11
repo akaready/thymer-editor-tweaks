@@ -1,6 +1,10 @@
 # Editor Tweaks
 
-Uniform editor line geometry and Thymer's native hover controls, tuned in place — nothing is redrawn, no controls are replaced. Just open **Plugin: Editor Tweaks** from the command palette.
+Uniform editor line geometry and Thymer's native hover controls, tuned in place — nothing is redrawn, no controls are replaced.
+
+Open **Plugin: Editor Tweaks** from the command palette.
+
+Absorbs the older **Hover Tweaks** plugin (archived under `plugins/_archive/`); its behavior toggles and cursor system live here now.
 
 Plugins are made with 🤍 for the Thymer community. Free to use, fork, and hack on for <a href="LICENSE" target="_blank" rel="noopener noreferrer">non-commercial use</a>.
 
