@@ -1,0 +1,18 @@
+{
+	"ver": 1,
+	"name": "Editor Tweaks",
+	"icon": "ruler",
+	"description": "Uniform editor line geometry (indent mode, aligned indent guides) plus Thymer's native hover controls tuned: click-to-zoom, custom cursors, and collapsed-line cleanups.",
+	"instructions": "Open Plugin: Editor Tweaks from the command palette. Indent mode aligns regular text to the bulleted column; guide fixes keep indent guides on one column per depth. Hover a line: click the handle to zoom (⌥-click opens the menu), press-and-hold still grabs for drag. All behaviors are toggleable.",
+	"author": "@akaready",
+	"homepage": "https://akaready.com",
+	"repository": "https://github.com/akaready/thymer-editor-tweaks",
+	"coffee": "https://buymeacoffee.com/akaready",
+	"version": "1.0.0",
+	"__source_repo": "https://github.com/akaready/thymer-editor-tweaks",
+	"__source_files": {
+		"branch": "main",
+		"json": "plugin.json",
+		"js": "plugin.js"
+	}
+}
