@@ -1,23 +1,10 @@
 # Editor Tweaks
 
-Uniform editor line geometry plus Thymer's native hover controls, tuned in place. (Absorbs the former Hover Tweaks plugin.)
+Uniform editor line geometry and Thymer's native hover controls, tuned in place — nothing is redrawn, no controls are replaced.
 
-**Editor geometry:**
+Open **Plugin: Editor Tweaks** from the command palette.
 
-- **Indent mode** — regular text lines indent to the bulleted text column (bullets hang left). Off = native text alignment.
-- **Align guide columns** — every indent guide sits on the same column per depth, instead of shifting ~6px between bullet and text parents.
-- **Re-anchor guides under wrapped rows** — guides start below the full wrapped parent row rather than alongside its continuation lines.
-- **Expanded caret color** — the ▼ fold caret wears the indent guide's own color token instead of the bright native glyph.
-
-**Hover controls** (the native handle and caret keep their own drag, menu, and fold — nothing is redrawn):
-
-- **Click handle to zoom** — plain click zooms into the record, ⌥-click opens the options menu (Thymer ships the reverse), with a ↗ / ⋯ glyph cue while hovering. Press-and-hold still grabs for drag.
-- **Custom handle cursors** — pick any macOS cursor for the zoom and menu affordances.
-- **Collapsed-line cleanups** — hide the `[...]` unfold indicator, hide collapsed-line background shading, keep a persistent caret on folded lines, and suppress the hover wash and tooltips.
-- **Align hover controls to top line** *(off by default)* — center the caret and handle on the first text line of wrapped rows.
-- **Layout tweaks** *(off by default)* — finite px nudges for the caret and handle if native placement ever needs adjusting.
-
-Everything is toggleable from the settings panel (command palette → `Plugin: Editor Tweaks`).
+Absorbs the older **Hover Tweaks** plugin (archived under `plugins/_archive/`); its behavior toggles and cursor system live here now.
 
 Plugins are made with 🤍 for the Thymer community. Free to use, fork, and hack on for <a href="LICENSE" target="_blank" rel="noopener noreferrer">non-commercial use</a>.
 
@@ -39,6 +26,35 @@ Enjoy! 🙏
 **Recommended:** Use the <a href="https://github.com/ahpatel/thymer-plugins-manager" target="_blank" rel="noopener noreferrer">Thymer Plugins Manager</a> and install via <a href="https://github.com/akaready/thymer-editor-tweaks" target="_blank" rel="noopener noreferrer">this repo's URL</a>. You'll get notifications when new versions ship.
 
 **Manual:** copy <a href="plugin.js" target="_blank" rel="noopener noreferrer"><code>plugin.js</code></a> and <a href="plugin.json" target="_blank" rel="noopener noreferrer"><code>plugin.json</code></a> from this repo into Thymer's plugin editor.
+
+
+&nbsp;
+
+## ✨ What It Does
+
+### Indent Mode
+
+Regular text lines indent to the bulleted text column, so bullets hang left and text always starts at the same column. Off = native text alignment.
+
+### Indent Guides
+
+- **Align guide columns** — Thymer draws indent guides at slightly different horizontal positions depending on whether the parent line is a bullet or plain text (a ~6px kink between segments). This keeps every guide on the same column per depth.
+- **Re-anchor guides under wrapped rows** — natively a guide starts one line below the parent's top, so under a wrapped parent it runs alongside the parent's own continuation lines. This starts it below the full row instead.
+- The expanded ▼ fold caret wears the indent guide's own color token instead of the bright native glyph, so it reads as the head of the line.
+
+### Hover Modifications
+
+- Hide the `[...]` unfold indicator at the end of collapsed lines
+- Hide background shading for collapsed lines
+- Hide the persistent caret for collapsed and/or expanded lines
+- No hover background on the handle & caret
+- **Click handle to zoom** — plain click zooms into the record, `option`-click opens the options menu (Thymer ships the reverse). Press-and-hold still grabs for drag.
+- **Align hover controls to top line** — center the caret and drag handle on the first text line of wrapped rows (native centers on the whole row). Off by default.
+- **Align drag handle to caret** — scoot the drag handle so it lines up with the fold caret, with live-editable top/left offsets.
+
+### Hover Cursors
+
+Pick any macOS cursor for the handle's zoom and menu affordances (defaults: resize-east for zoom, resize-down for menu). Searchable picker with live previews.
 
 
 &nbsp;
