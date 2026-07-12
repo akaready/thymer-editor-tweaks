@@ -1785,7 +1785,7 @@ var plugins = (() => {
   __name(syncPluginVersionOnLoad, "syncPluginVersionOnLoad");
 
   // plugin.js
-  var PLUGIN_VERSION = "1.0.2";
+  var PLUGIN_VERSION = "1.0.4";
   var ROOT_CLASS = "plg-editor-tweaks";
   var PANEL_TYPE = "editor-tweaks-settings";
   var BODY_CLASS = "et-enabled";
@@ -1793,6 +1793,7 @@ var plugins = (() => {
   var SETTINGS_STYLE_ID = "et-settings-style";
   var PANEL_SELECTOR = ".panel";
   var HANDLE_SELECTOR = ".item-drag-handle.link-menu-opener:not(.options-cell-handle)";
+  var TABLE_HOVER_MENU_SELECTOR = ".link-menu.item-drag-handle-style";
   var TABLE_HANDLE_SELECTOR = ".options-cell-handle.item-drag-handle.link-menu-opener";
   var LIVE_HANDLE_SELECTOR = `${HANDLE_SELECTOR}:not(.is-br):not(.lineitem-lineref)`;
   var INLINE_REF_GUARD = ".lineitem-lineref, .lineitem-ref, .lineitem-ref-title, .lineitem-hashtag, .lineitem-hashtag-input";
@@ -1812,6 +1813,7 @@ var plugins = (() => {
     hideCollapsedLineBackground: true,
     showPersistentCollapsedCaret: true,
     hidePersistentExpandedCaret: false,
+    hideTableHoverMenu: true,
     hideHoverBackground: true,
     /** true: click zooms, ⌥-click opens menu (Thymer ships the reverse). */
     altClickOpensMenu: true,
@@ -2044,6 +2046,8 @@ var plugins = (() => {
       document.body.classList.remove(INDENT_BODY_CLASS);
       delete document.body.dataset.etPersistentCaret;
       delete document.body.dataset.etExpandedCaret;
+      delete document.body.dataset.etHideTableMenu;
+      delete document.body.dataset.etMenuAllow;
       delete document.body.dataset.etHoverBg;
       delete document.body.dataset.etAlt;
       delete document.body.dataset.etAltClickMenu;
@@ -2121,6 +2125,10 @@ var plugins = (() => {
       }
       try {
         this._domObs = new MutationObserver((mutations) => {
+          const allow = Number(document.body.dataset.etMenuAllow || NaN);
+          if (Number.isFinite(allow) && performance.now() - allow > 800 && !document.querySelector(`${TABLE_HOVER_MENU_SELECTOR}.link-menu-visible`)) {
+            delete document.body.dataset.etMenuAllow;
+          }
           for (const m of mutations) {
             const t = m.target;
             if (t instanceof Element && t.closest(INLINE_REF_GUARD)) continue;
@@ -2487,6 +2495,9 @@ var plugins = (() => {
       event.stopPropagation();
       event.stopImmediatePropagation?.();
       if (event.altKey) {
+        if (handle.classList.contains("options-cell-handle")) {
+          document.body.dataset.etMenuAllow = String(Math.round(performance.now()));
+        }
         this._passthroughClick = true;
         try {
           handle.dispatchEvent(new MouseEvent("click", {
@@ -2630,6 +2641,7 @@ var plugins = (() => {
         hideCollapsedLineBackground: s.hideCollapsedLineBackground !== false,
         showPersistentCollapsedCaret: s.showPersistentCollapsedCaret !== false,
         hidePersistentExpandedCaret: s.hidePersistentExpandedCaret === true,
+        hideTableHoverMenu: s.hideTableHoverMenu !== false,
         hideHoverBackground: s.hideHoverBackground !== false,
         altClickOpensMenu: this.normalizeAltClickOpensMenu(s),
         zoomCursor: normalizeCursorId(s.zoomCursor, DEFAULT_SETTINGS.zoomCursor),
@@ -2741,6 +2753,7 @@ var plugins = (() => {
       document.body.classList.toggle(INDENT_BODY_CLASS, settings.indentMode);
       document.body.dataset.etPersistentCaret = String(settings.showPersistentCollapsedCaret);
       document.body.dataset.etExpandedCaret = settings.hidePersistentExpandedCaret ? "false" : "true";
+      document.body.dataset.etHideTableMenu = settings.hideTableHoverMenu ? "true" : "false";
       document.body.dataset.etHoverBg = settings.hideHoverBackground ? "false" : "true";
       document.body.dataset.etAltClickMenu = settings.altClickOpensMenu ? "true" : "false";
       this.writeSettingsStyle();
@@ -2923,10 +2936,11 @@ var plugins = (() => {
             }),
             check("hidePersistentExpandedCaret", "Hide persistent caret for expanded lines"),
             check("hideHoverBackground", "No hover background on handle & chevron"),
+            check("altClickOpensMenu", "Click handle to zoom (\u2325-click opens menu)"),
             check(
-              "altClickOpensMenu",
-              "Click handle to zoom (\u2325-click opens menu)",
-              "Applies in the editor and to table-view row handles. Press-and-hold still grabs for drag."
+              "hideTableHoverMenu",
+              "Hide table-row hover menu",
+              "Suppress the floating drag/zoom/open pill on table-view row hover. With click-to-zoom on: plain click zooms, \u2325-click still opens the menu on demand."
             ),
             check(
               "alignControlsToTopLine",
@@ -3216,6 +3230,18 @@ var plugins = (() => {
 			}
 
 			/* ============================================================
+			   Table-row hover pill \u2014 the body-level floating menu
+			   (link-menu item-drag-handle-style link-menu-visible) that
+			   Thymer spawns on hover-intent over table-view rows. The
+			   editor's menu uses item-drag-handle-editor-style and is
+			   unaffected.
+			   ============================================================ */
+
+			body.${BODY_CLASS}[data-et-hide-table-menu="true"]:not([data-et-menu-allow]) ${TABLE_HOVER_MENU_SELECTOR} {
+				display: none !important;
+			}
+
+			/* ============================================================
 			   Handle cursors \u2014 match click semantics per mode/alt state.
 			   ============================================================ */
 
@@ -3245,8 +3271,7 @@ var plugins = (() => {
 				cursor: grabbing !important;
 			}
 
-			/* Table-view row handles: same swap cursors, but ONLY while the
-			   click-to-zoom swap is on \u2014 off leaves tables fully native. */
+			/* Table-view row handles: swap cursors, only while the swap is on. */
 			body.${BODY_CLASS}[data-et-alt-click-menu="true"] ${TABLE_HANDLE_SELECTOR},
 			body.${BODY_CLASS}[data-et-alt-click-menu="true"] ${TABLE_HANDLE_SELECTOR}:hover,
 			body.${BODY_CLASS}[data-et-alt-click-menu="true"] ${TABLE_HANDLE_SELECTOR} * {
@@ -3262,6 +3287,7 @@ var plugins = (() => {
 			body.${BODY_CLASS}[data-et-pressing="true"] ${TABLE_HANDLE_SELECTOR} * {
 				cursor: grabbing !important;
 			}
+
 
 			/* ============================================================
 			   Settings panel (shared settings-ui handles the rest).
