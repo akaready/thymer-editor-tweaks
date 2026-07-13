@@ -2832,7 +2832,7 @@ ${report}
         return null;
       }
     }, "readLocalRaw");
-    const normalizedStringify = /* @__PURE__ */ __name((raw) => JSON.stringify(normalize(raw && typeof raw === "object" ? raw : {})), "normalizedStringify");
+    const normalizedStringify = /* @__PURE__ */ __name((raw) => JSON.stringify(normalize(raw)), "normalizedStringify");
     const store = {
       /** Read-only: never writes either store. */
       load() {

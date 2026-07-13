@@ -31,6 +31,10 @@ Enjoy! 🙏
 
 &nbsp;
 
+## 🔁 Settings Sync ("This device" vs "All devices")
+
+The settings panel header shows a scope pill. By default a device follows the shared, synced settings (`○ All devices`). The moment you change something, the change applies to **this device only** — the pill lights up (`● This device`) and two buttons appear: **↑ apply these settings to all devices** (one tap) and **↺ discard device changes** (tap twice) to go back to the synced settings. If your edits bring the device back to an exact match with the synced settings, the pill clears itself. Devices that haven't been touched follow pushes from other devices live.
+
 ## ✨ What It Does
 
 ### Indent Mode
