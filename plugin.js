@@ -2991,11 +2991,12 @@ ${report}
   __name(createSettingsStore, "createSettingsStore");
 
   // plugin.js
-  var PLUGIN_VERSION = "1.2.7";
+  var PLUGIN_VERSION = "1.3.0";
   var ROOT_CLASS = "plg-editor-tweaks";
   var PANEL_TYPE = "editor-tweaks-settings";
   var BODY_CLASS = "et-enabled";
   var INDENT_BODY_CLASS = "plg-et-indent";
+  var HIDE_TITLEBAR_BODY_CLASS = "plg-et-hide-titlebar";
   var SETTINGS_STYLE_ID = "et-settings-style";
   var PANEL_SELECTOR = ".panel";
   var HANDLE_SELECTOR = ".item-drag-handle.link-menu-opener:not(.options-cell-handle)";
@@ -3028,7 +3029,11 @@ ${report}
     // Hover geometry (all OFF — native placement is good post-update)
     alignControlsToTopLine: false,
     // Static drag-handle offset (the "scoot the drag handle over" fix).
-    alignHandleToCaret: true
+    alignHandleToCaret: true,
+    // Window chrome (Mac Traffic Lights merged in 1.3.0). Both OFF by default
+    // so existing installs see no change until the user opts in.
+    hideMacTrafficLights: false,
+    hideTitlebar: false
   });
   var HANDLE_ALIGN_DEFAULTS = Object.freeze({
     handleAlignTop: 1.75,
@@ -3249,6 +3254,7 @@ ${report}
       this._panelEl = null;
       document.body.classList.remove(BODY_CLASS);
       document.body.classList.remove(INDENT_BODY_CLASS);
+      document.body.classList.remove(HIDE_TITLEBAR_BODY_CLASS);
       delete document.body.dataset.etPersistentCaret;
       delete document.body.dataset.etExpandedCaret;
       delete document.body.dataset.etHideTableMenu;
@@ -3796,7 +3802,9 @@ ${report}
         alignControlsToTopLine: s.alignControlsToTopLine === true,
         alignHandleToCaret: s.alignHandleToCaret !== false,
         handleAlignTop: this.normalizeQuarter(s.handleAlignTop, HANDLE_ALIGN_DEFAULTS.handleAlignTop),
-        handleAlignLeft: this.normalizeQuarter(s.handleAlignLeft, HANDLE_ALIGN_DEFAULTS.handleAlignLeft)
+        handleAlignLeft: this.normalizeQuarter(s.handleAlignLeft, HANDLE_ALIGN_DEFAULTS.handleAlignLeft),
+        hideMacTrafficLights: s.hideMacTrafficLights === true,
+        hideTitlebar: s.hideTitlebar === true
       };
     }
     /** @param {unknown} value @param {number} fallback */
@@ -3880,15 +3888,36 @@ ${report}
       const settings = this.normalizeSettings(this.settings);
       this.settings = settings;
       document.body.classList.toggle(INDENT_BODY_CLASS, settings.indentMode);
+      document.body.classList.toggle(HIDE_TITLEBAR_BODY_CLASS, settings.hideTitlebar);
       document.body.dataset.etPersistentCaret = String(settings.showPersistentCollapsedCaret);
       document.body.dataset.etExpandedCaret = settings.hidePersistentExpandedCaret ? "false" : "true";
       document.body.dataset.etHideTableMenu = settings.hideTableHoverMenu ? "true" : "false";
       document.body.dataset.etHoverBg = settings.hideHoverBackground ? "false" : "true";
       document.body.dataset.etAltClickMenu = settings.altClickOpensMenu ? "true" : "false";
+      void this._setMacTrafficLightsVisible(!settings.hideMacTrafficLights);
       this.writeSettingsStyle();
       if (!settings.alignGuideColumns || !settings.fixWrappedGuides) this._restoreNativeGuides();
       if (!this._geometryActive()) this._restoreControlMargins(true);
       this._schedulePass();
+    }
+    /**
+     * Toggle macOS window traffic-light buttons via the Thymer Desktop preload
+     * bridge (window.thymerDesktopAPI.setMacTrafficLightsVisible). Silent no-op
+     * on non-mac / older desktop builds / web — the settings-panel checkbox
+     * flipping IS the user feedback; no toaster.
+     * @param {boolean} visible
+     */
+    async _setMacTrafficLightsVisible(visible) {
+      const api = (
+        /** @type {any} */
+        window.thymerDesktopAPI
+      );
+      if (api && typeof api.setMacTrafficLightsVisible === "function") {
+        try {
+          await api.setMacTrafficLightsVisible(visible);
+        } catch {
+        }
+      }
     }
     ensureSettingsStyle() {
       let style = this._settingsStyleEl;
@@ -3943,6 +3972,21 @@ ${report}
 				body.${BODY_CLASS} .listitem-fold-blocked {
 					background: transparent !important;
 					background-color: transparent !important;
+				}
+			`);
+      }
+      if (settings.hideTitlebar) {
+        rules.push(`
+				body.${HIDE_TITLEBAR_BODY_CLASS} .title-bar {
+					visibility: hidden;
+					overflow: hidden;
+					height: 0;
+					padding: 0;
+					border: none;
+					min-height: 0;
+				}
+				body.${HIDE_TITLEBAR_BODY_CLASS} .app-chrome-panels {
+					grid-template-rows: 0px minmax(0px, 1fr) 30px !important;
 				}
 			`);
       }
@@ -4121,6 +4165,21 @@ ${report}
           body: [
             this.buildCursorSelect({ name: "zoomCursor", label: "Zoom cursor", value: s.zoomCursor }),
             this.buildCursorSelect({ name: "menuCursor", label: "Menu cursor", value: s.menuCursor })
+          ]
+        }),
+        section({
+          label: "Window Chrome",
+          body: [
+            check(
+              "hideMacTrafficLights",
+              "Hide macOS traffic lights",
+              "Removes the red / yellow / green window buttons. macOS Thymer Desktop only \u2014 no effect on web, Windows, or Linux."
+            ),
+            check(
+              "hideTitlebar",
+              "Hide Thymer\u2019s titlebar",
+              "Collapses the app\u2019s top toolbar. Command palette and menu bar still work."
+            )
           ]
         })
       ]));

@@ -4,7 +4,7 @@ Uniform editor line geometry and Thymer's native hover controls, tuned in place 
 
 Open **Plugin: Editor Tweaks** from the command palette.
 
-Absorbs the older **Hover Tweaks** plugin (archived under `plugins/_archive/`); its behavior toggles and cursor system live here now.
+Absorbs the older **Hover Tweaks** and **Mac Traffic Lights** plugins (archived under `plugins/_archive/`); their behavior toggles, cursor system, and window-chrome controls live here now.
 
 Plugins are made with 🤍 for the Thymer community. Free to use, fork, and hack on for <a href="LICENSE" target="_blank" rel="noopener noreferrer">non-commercial use</a>.
 
@@ -60,6 +60,11 @@ Regular text lines indent to the bulleted text column, so bullets hang left and 
 ### Hover Cursors
 
 Pick any macOS cursor for the handle's zoom and menu affordances (defaults: resize-east for zoom, resize-down for menu). Searchable picker with live previews.
+
+### Window Chrome
+
+- **Hide macOS traffic lights** — removes the red / yellow / green window buttons via Thymer Desktop's `setMacTrafficLightsVisible` bridge. macOS Thymer Desktop only; silent no-op on web, Windows, and Linux.
+- **Hide Thymer's titlebar** — collapses the app's top toolbar with a small CSS override. Command palette and menu bar still work.
 
 
 &nbsp;
