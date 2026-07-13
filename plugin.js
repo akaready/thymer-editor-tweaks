@@ -538,12 +538,25 @@ var plugins = (() => {
               border-color var(--tps-dur-fast, 80ms) var(--tps-ease-out, ease-out);
 }
 
-.tps-scope-btn .ti {
-  width: 14px;
-  height: 14px;
-  font-size: 14px;
+/* 16px: Tabler draws on a 24px grid; 14px lands strokes on half-pixels and
+   the thin arrow glyphs smear visibly off-center. 16px in the 22px button
+   gives an integer 3px inset and evenly-antialiased strokes. */
+.tps-panel .tps-scope-btn .ti {
+  width: 16px;
+  height: 16px;
+  font-size: 16px;
+  line-height: 1;
   transform: none;
   margin: 0;
+}
+
+/* Optical correction: the Tabler webfont has near-zero descent, so glyph ink
+   rides ~1px high of the line-box center in ANY flex/line centering. Nudge
+   the ink itself; the boxes are already mathematically centered (probed). */
+.tps-panel .tps-scope-btn .ti::before,
+.tps-panel .tps-plugin-header-bug .ti::before {
+  display: inline-block;
+  transform: translateY(1px);
 }
 
 .tps-scope-btn:hover {
@@ -563,7 +576,10 @@ var plugins = (() => {
   background: var(--enum-green-bg, rgba(63, 166, 83, 0.12));
 }
 
-.tps-scope-btn--discard[data-armed="true"] {
+/* Armed state must beat the generic :hover recolor (same specificity, order-
+   dependent) \u2014 scope it up so the icon reddens with the box, hovered or not. */
+.tps-panel .tps-scope-btn--discard[data-armed="true"],
+.tps-panel .tps-scope-btn--discard[data-armed="true"]:hover {
   color: var(--enum-red-fg, #d64545);
   border-color: var(--enum-red-border, rgba(214, 69, 69, 0.5));
   background: var(--enum-red-bg, rgba(214, 69, 69, 0.12));
@@ -2835,6 +2851,14 @@ ${report}
        */
       update(patch) {
         current = normalize({ ...current, ...patch });
+        if (normalizedStringify(readSyncedBlob(readCustom())) === JSON.stringify(current)) {
+          try {
+            localStorage.removeItem(storageKey());
+          } catch {
+          }
+          diverged = false;
+          return { settings: current, diverged };
+        }
         diverged = true;
         try {
           localStorage.setItem(storageKey(), JSON.stringify(current));
@@ -2958,7 +2982,7 @@ ${report}
   __name(createSettingsStore, "createSettingsStore");
 
   // plugin.js
-  var PLUGIN_VERSION = "1.2.3";
+  var PLUGIN_VERSION = "1.2.6";
   var ROOT_CLASS = "plg-editor-tweaks";
   var PANEL_TYPE = "editor-tweaks-settings";
   var BODY_CLASS = "et-enabled";
