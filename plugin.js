@@ -472,6 +472,106 @@ var plugins = (() => {
   filter: brightness(1.2);
 }
 
+/* \u2500\u2500 Header controls: scope pill + bug report + kill switch \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
+
+/* Settings-scope cluster. Resting: one dim "All devices" pill. Diverged:
+   pill lights amber (full-perimeter border + tint \u2014 never a single-edge
+   accent) and the \u2191 push / \u21BA discard icon buttons appear beside it. Amber
+   rides Thymer's orange enum tokens so it tracks the theme. */
+.tps-scope {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.tps-scope-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 22px;
+  padding: 0 8px;
+  border: 1px solid var(--tps-border, rgba(127, 127, 127, 0.16));
+  border-radius: 999px;
+  font-size: 10.5px;
+  line-height: 1;
+  white-space: nowrap;
+  color: var(--tps-text-muted);
+  background: transparent;
+  user-select: none;
+}
+
+.tps-scope-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--tps-text-muted);
+  opacity: 0.55;
+}
+
+.tps-scope-pill[data-diverged="true"] {
+  color: var(--enum-orange-fg, #d98324);
+  border-color: var(--enum-orange-border, rgba(217, 131, 36, 0.45));
+  background: var(--enum-orange-bg, rgba(217, 131, 36, 0.12));
+}
+
+.tps-scope-pill[data-diverged="true"] .tps-scope-dot {
+  background: var(--enum-orange-fg, #d98324);
+  opacity: 1;
+}
+
+.tps-scope-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid var(--tps-border, rgba(127, 127, 127, 0.16));
+  border-radius: var(--tps-radius-sm, 4px);
+  background: transparent;
+  color: var(--tps-text-muted);
+  cursor: pointer;
+  transition: color var(--tps-dur-fast, 80ms) var(--tps-ease-out, ease-out),
+              background-color var(--tps-dur-fast, 80ms) var(--tps-ease-out, ease-out),
+              border-color var(--tps-dur-fast, 80ms) var(--tps-ease-out, ease-out);
+}
+
+.tps-scope-btn .ti {
+  width: 14px;
+  height: 14px;
+  font-size: 14px;
+  transform: none;
+  margin: 0;
+}
+
+.tps-scope-btn:hover {
+  color: var(--tps-text);
+  background: var(--tps-bg-hover);
+  border-color: var(--tps-border);
+}
+
+.tps-scope-btn:focus-visible {
+  outline: 2px solid var(--tps-accent);
+  outline-offset: 2px;
+}
+
+.tps-scope-btn--push:hover {
+  color: var(--enum-green-fg, #3fa653);
+  border-color: var(--enum-green-border, rgba(63, 166, 83, 0.45));
+  background: var(--enum-green-bg, rgba(63, 166, 83, 0.12));
+}
+
+.tps-scope-btn--discard[data-armed="true"] {
+  color: var(--enum-red-fg, #d64545);
+  border-color: var(--enum-red-border, rgba(214, 69, 69, 0.5));
+  background: var(--enum-red-bg, rgba(214, 69, 69, 0.12));
+}
+
+.tps-scope-btn[disabled] {
+  opacity: 0.5;
+  cursor: default;
+}
+
 /* \u2500\u2500 Header controls: bug report + kill switch \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
 
 /* Last flex item of the attr row; margin-left:auto pins the group to the
@@ -2041,7 +2141,8 @@ ${report}
     repository = "https://github.com/akaready",
     coffee = "https://buymeacoffee.com/akaready",
     killSwitch = null,
-    feedback = null
+    feedback = null,
+    scope = null
   }) {
     const iconClass = icon ? icon.startsWith("ti-") ? icon : `ti-${icon}` : "";
     const helperLines = normalizeHelperLines(helper);
@@ -2097,9 +2198,10 @@ ${report}
           h("span", { class: "tps-plugin-header-icon tps-plugin-header-iconify tps-plugin-header-iconify-github", "aria-hidden": "true" }),
           h("a", { class: "tps-plugin-header-link tps-plugin-header-link--muted tps-plugin-header-version", href: repository, target: "_blank", rel: "noopener noreferrer" }, `v${version}`)
         ) : null,
-        fb || killSwitch ? h(
+        fb || killSwitch || scope ? h(
           "span",
           { class: "tps-plugin-header-controls" },
+          scope ? scopeCluster(scope) : null,
           fb ? renderFeedbackButton(fb) : null,
           killSwitch ? renderKillSwitch(killSwitch) : null
         ) : null
@@ -2115,6 +2217,70 @@ ${report}
     return h("div", { class: "tps-plugin-header" }, ...children);
   }
   __name(pluginHeader, "pluginHeader");
+  function scopeCluster(scope) {
+    const pill = h(
+      "span",
+      {
+        class: "tps-scope-pill",
+        "data-diverged": String(!!scope.diverged),
+        title: scope.diverged ? "These settings currently apply to this device only" : "Settings are synced \u2014 changes here start as this-device-only"
+      },
+      h("span", { class: "tps-scope-dot", "aria-hidden": "true" }),
+      scope.diverged ? "This device" : "All devices"
+    );
+    if (!scope.diverged) {
+      return h("span", { class: "tps-scope" }, pill);
+    }
+    const push = h("button", {
+      type: "button",
+      class: "tps-scope-btn tps-scope-btn--push",
+      title: "Apply these settings to all devices",
+      "aria-label": "Apply these settings to all devices",
+      onClick: /* @__PURE__ */ __name((e) => {
+        const btn = (
+          /** @type {HTMLButtonElement} */
+          e.currentTarget
+        );
+        if (btn.disabled) return;
+        btn.disabled = true;
+        try {
+          scope.onPush();
+        } catch {
+          btn.disabled = false;
+        }
+      }, "onClick")
+    }, h("i", { class: "ti ti-arrow-up", "aria-hidden": "true" }));
+    let disarmTimer = 0;
+    const discard = h("button", {
+      type: "button",
+      class: "tps-scope-btn tps-scope-btn--discard",
+      title: "Discard device changes \u2014 revert to synced settings",
+      "aria-label": "Discard device changes",
+      onClick: /* @__PURE__ */ __name((e) => {
+        const btn = (
+          /** @type {HTMLButtonElement} */
+          e.currentTarget
+        );
+        if (btn.getAttribute("data-armed") !== "true") {
+          btn.setAttribute("data-armed", "true");
+          btn.title = "Tap again to discard device changes";
+          clearTimeout(disarmTimer);
+          disarmTimer = window.setTimeout(() => {
+            btn.removeAttribute("data-armed");
+            btn.title = "Discard device changes \u2014 revert to synced settings";
+          }, 3e3);
+          return;
+        }
+        clearTimeout(disarmTimer);
+        try {
+          scope.onDiscard();
+        } catch {
+        }
+      }, "onClick")
+    }, h("i", { class: "ti ti-arrow-back-up", "aria-hidden": "true" }));
+    return h("span", { class: "tps-scope" }, pill, push, discard);
+  }
+  __name(scopeCluster, "scopeCluster");
   function renderFeedbackButton(fb) {
     return h("button", {
       type: "button",
@@ -2479,6 +2645,17 @@ ${report}
     conf.custom, ...customPatch } : { ...customPatch };
     if (readPluginVersion(conf, "") === pluginVersion) return;
     try {
+      let ws = "default";
+      try {
+        ws = plugin.getWorkspaceGuid?.() || "default";
+      } catch {
+      }
+      const guardKey = `tps-version-synced/${ws}/${conf.name}`;
+      if (sessionStorage.getItem(guardKey) === pluginVersion) return;
+      sessionStorage.setItem(guardKey, pluginVersion);
+    } catch {
+    }
+    try {
       await api.saveConfiguration(configWithPluginVersion(conf, custom, pluginVersion));
     } catch {
     }
@@ -2569,8 +2746,198 @@ ${report}
   }
   __name(setPluginDisabled, "setPluginDisabled");
 
+  // ../../shared/plugin-settings.js
+  function createSettingsStore(plugin, {
+    slug,
+    key = "settings",
+    version,
+    normalize = /* @__PURE__ */ __name((raw) => raw && typeof raw === "object" ? raw : {}, "normalize"),
+    scopeKey = null,
+    readSynced = null,
+    pickSynced = null
+  }) {
+    const readSyncedBlob = readSynced || ((custom) => custom?.[key]);
+    const pickSyncedSubset = pickSynced || ((s) => s);
+    let current = {};
+    let diverged = false;
+    let pushInFlight = false;
+    const workspaceGuid = /* @__PURE__ */ __name(() => {
+      try {
+        const guid = plugin.getWorkspaceGuid?.();
+        if (guid) return guid;
+      } catch {
+      }
+      return "default";
+    }, "workspaceGuid");
+    const storageKey = /* @__PURE__ */ __name(() => {
+      const scope = scopeKey ? `/${scopeKey()}` : "";
+      return `${slug}/${workspaceGuid()}${scope}/settings`;
+    }, "storageKey");
+    const readCustom = /* @__PURE__ */ __name(() => {
+      try {
+        const conf = plugin.getConfiguration?.();
+        const custom = conf && conf.custom;
+        return custom && typeof custom === "object" ? (
+          /** @type {Record<string, unknown>} */
+          custom
+        ) : {};
+      } catch {
+        return {};
+      }
+    }, "readCustom");
+    const readLocalRaw = /* @__PURE__ */ __name(() => {
+      try {
+        const raw = localStorage.getItem(storageKey());
+        if (raw === null) return null;
+        const parsed = JSON.parse(raw);
+        return parsed && typeof parsed === "object" ? parsed : {};
+      } catch {
+        return null;
+      }
+    }, "readLocalRaw");
+    const normalizedStringify = /* @__PURE__ */ __name((raw) => JSON.stringify(normalize(raw && typeof raw === "object" ? raw : {})), "normalizedStringify");
+    const store = {
+      /** Read-only: never writes either store. */
+      load() {
+        const local = readLocalRaw();
+        if (local !== null) {
+          current = normalize(local);
+          diverged = true;
+        } else {
+          current = normalize(readSyncedBlob(readCustom()) || {});
+          diverged = false;
+        }
+        return { settings: current, diverged };
+      },
+      get() {
+        return current;
+      },
+      isDiverged() {
+        return diverged;
+      },
+      /**
+       * Every edit is device-local. First edit snapshots the FULL settings
+       * (inherited values of untouched keys survive). localStorage throwing
+       * (private mode) leaves the edit in memory for the session — still
+       * reported diverged so the pill/push UI works, and push still syncs.
+       */
+      update(patch) {
+        current = normalize({ ...current, ...patch });
+        diverged = true;
+        try {
+          localStorage.setItem(storageKey(), JSON.stringify(current));
+        } catch {
+        }
+        return { settings: current, diverged };
+      },
+      /**
+       * The explicit ↑ "Apply to all devices": ONE saveConfiguration (which
+       * reloads the plugin), then the local blob is cleared so this device
+       * goes back to following the synced config. Resolves true when the
+       * settings are known to be in synced config (pushed or already equal).
+       */
+      async pushToAll() {
+        if (pushInFlight) return false;
+        pushInFlight = true;
+        try {
+          const api = await resolveConfigApi(plugin);
+          if (!api || typeof api.saveConfiguration !== "function") return false;
+          let conf = {};
+          try {
+            conf = api.getConfiguration?.() || plugin.getConfiguration?.() || {};
+          } catch {
+            return false;
+          }
+          if (typeof conf.name !== "string" || !conf.name.trim()) return false;
+          const custom = conf.custom && typeof conf.custom === "object" ? conf.custom : {};
+          const subset = pickSyncedSubset(normalize(current));
+          if (normalizedStringify(readSyncedBlob(
+            /** @type {any} */
+            custom
+          )) !== normalizedStringify(subset)) {
+            await api.saveConfiguration(configWithPluginVersion(conf, { [key]: subset }, version));
+          }
+          try {
+            localStorage.removeItem(storageKey());
+          } catch {
+          }
+          diverged = false;
+          return true;
+        } catch {
+          return false;
+        } finally {
+          pushInFlight = false;
+        }
+      },
+      /** The ↺ "Discard device changes": drop local, re-adopt synced. */
+      discardLocal() {
+        try {
+          localStorage.removeItem(storageKey());
+        } catch {
+        }
+        current = normalize(readSyncedBlob(readCustom()) || {});
+        diverged = false;
+        return current;
+      },
+      /**
+       * For folding into `setPluginDisabled(plugin, off, version, customPatch)`
+       * so a kill-switch toggle carries staged device settings in the SAME
+       * save (one reload, no race — CLAUDE.md rule). Call markFlushed() after
+       * that save succeeds if the fold should count as a push.
+       */
+      pendingCustomPatch() {
+        return diverged ? { [key]: pickSyncedSubset(normalize(current)) } : {};
+      },
+      markFlushed() {
+        try {
+          localStorage.removeItem(storageKey());
+        } catch {
+        }
+        diverged = false;
+      },
+      /**
+       * Live-follow for non-diverged devices: when another device pushes,
+       * `global-plugin.updated` fires here; re-read the synced blob and, if
+       * it changed semantically, hand the fresh settings to the plugin's
+       * central apply (which each plugin already guards with its kill
+       * switch). Returns a detach function for onUnload.
+       */
+      attachLifecycle({ onRemoteChange } = {}) {
+        const handlerIds = [];
+        try {
+          const id = plugin.events?.on?.("global-plugin.updated", (event) => {
+            try {
+              if (diverged) return;
+              if (event?.source?.isLocal) return;
+              const guid = plugin.getGuid?.();
+              const eventGuid = event?.pluginGuid || event?.guid || event?.rootId || null;
+              if (eventGuid && guid && eventGuid !== guid) return;
+              const next = normalize(readSyncedBlob(readCustom()) || {});
+              if (JSON.stringify(next) === JSON.stringify(current)) return;
+              current = next;
+              onRemoteChange?.(current);
+            } catch {
+            }
+          });
+          if (id) handlerIds.push(id);
+        } catch {
+        }
+        return () => {
+          for (const id of handlerIds) {
+            try {
+              plugin.events?.off?.(id);
+            } catch {
+            }
+          }
+        };
+      }
+    };
+    return store;
+  }
+  __name(createSettingsStore, "createSettingsStore");
+
   // plugin.js
-  var PLUGIN_VERSION = "1.1.4";
+  var PLUGIN_VERSION = "1.2.0";
   var ROOT_CLASS = "plg-editor-tweaks";
   var PANEL_TYPE = "editor-tweaks-settings";
   var BODY_CLASS = "et-enabled";
@@ -2723,14 +3090,7 @@ ${report}
     onLoad() {
       pingInstall("editor-tweaks");
       pingActive("editor-tweaks");
-      try {
-        if (sessionStorage.getItem("et-version-synced") !== PLUGIN_VERSION) {
-          sessionStorage.setItem("et-version-synced", PLUGIN_VERSION);
-          syncPluginVersionOnLoad(this, PLUGIN_VERSION);
-        }
-      } catch {
-        syncPluginVersionOnLoad(this, PLUGIN_VERSION);
-      }
+      void syncPluginVersionOnLoad(this, PLUGIN_VERSION);
       this._disabled = readKillSwitch(this);
       this._handlerIds = /** @type {string[]} */
       [];
@@ -2739,15 +3099,16 @@ ${report}
       this._panelEl = null;
       this._passthroughClick = false;
       this._pressPoint = null;
-      this._configSaveDirty = false;
-      this._configSaveInFlight = false;
-      this._configSaveQueued = false;
-      this._configFlushTimer = 0;
-      this._isUnloading = false;
       this._passRaf = 0;
       this._domObs = null;
       this._styleObs = null;
-      this.settings = this.loadSettings();
+      this._settingsStore = createSettingsStore(this, {
+        slug: "editor-tweaks",
+        key: "settings",
+        version: PLUGIN_VERSION,
+        normalize: /* @__PURE__ */ __name((raw) => this.normalizeSettings(raw), "normalize")
+      });
+      this.settings = this._settingsStore.load().settings;
       this.cleanupPredecessorState();
       this.cleanupInjectedStyles();
       this.ui.injectCSS(PANEL_CSS);
@@ -2766,19 +3127,13 @@ ${report}
         this._panelEl = root;
         this._renderPanel();
       });
-      this._handlerIds.push(this.events.on("panel.closed", () => this.flushConfigSave()));
-      this._pageLifecycleListener = () => this.flushConfigSave();
-      try {
-        window.addEventListener("pagehide", this._pageLifecycleListener);
-      } catch {
-      }
-      this._visibilityListener = () => {
-        if (document.visibilityState === "hidden") this.flushConfigSave();
-      };
-      try {
-        document.addEventListener("visibilitychange", this._visibilityListener);
-      } catch {
-      }
+      this._detachSettingsLifecycle = this._settingsStore.attachLifecycle({
+        onRemoteChange: /* @__PURE__ */ __name((settings) => {
+          this.settings = settings;
+          this.applySettingsToDom();
+          this._renderPanel();
+        }, "onRemoteChange")
+      });
       try {
         const staleRoot = document.querySelector(".plg-editor-tweaks-panel");
         if (staleRoot && staleRoot.parentElement) {
@@ -2805,19 +3160,8 @@ ${report}
       setTimeout(() => this._schedulePass(), 120);
       setTimeout(() => this._schedulePass(), 500);
       setTimeout(() => this._schedulePass(), 1200);
-      try {
-        localStorage.setItem(this.settingsStorageKey(), JSON.stringify(this.settings));
-      } catch {
-      }
-      const storedNormalized = JSON.stringify(this.normalizeSettings(this.readCustomSettings() || {}));
-      if (storedNormalized !== JSON.stringify(this.normalizeSettings(this.settings))) {
-        this._configSaveDirty = true;
-        this.scheduleConfigFlush();
-      }
     }
     onUnload() {
-      this._isUnloading = true;
-      void this.flushConfigSave();
       for (const id of this._handlerIds || []) {
         try {
           this.events.off(id);
@@ -2837,16 +3181,8 @@ ${report}
       document.removeEventListener("click", this.onDocumentClickCloseCursors, false);
       this._teardownObservers();
       try {
-        if (this._pageLifecycleListener) window.removeEventListener("pagehide", this._pageLifecycleListener);
+        this._detachSettingsLifecycle?.();
       } catch {
-      }
-      try {
-        if (this._visibilityListener) document.removeEventListener("visibilitychange", this._visibilityListener);
-      } catch {
-      }
-      if (this._configFlushTimer) {
-        clearTimeout(this._configFlushTimer);
-        this._configFlushTimer = 0;
       }
       this._restoreNativeGuides();
       this._restoreControlMargins();
@@ -3387,77 +3723,6 @@ ${report}
     // ------------------------------------------------------------------
     // Settings — localStorage is the live store; synced config seeds it.
     // ------------------------------------------------------------------
-    getWorkspaceGuidSafe() {
-      try {
-        const guid = this.getWorkspaceGuid?.();
-        if (guid) return guid;
-      } catch {
-      }
-      return "default";
-    }
-    settingsStorageKey() {
-      return `editor-tweaks/${this.getWorkspaceGuidSafe()}/settings`;
-    }
-    loadSettings() {
-      const custom = this.readCustomSettings();
-      const imported = this.readRetiredHoverStores();
-      const local = this.readLocalSettings(this.settingsStorageKey());
-      return this.normalizeSettings(this.mergeSettings(this.mergeSettings(custom, imported), local));
-    }
-    /**
-     * One-way import of the retired standalone Hover Tweaks stores
-     * (`hover-tweaks/${ws}/…/settings`). Read-only — the keys stay untouched
-     * for as long as that plugin remains installed anywhere. Cursor and
-     * layout-debug keys are deliberately dropped: this plugin ships new
-     * defaults for both, and the old offsets are meaningless post-rewrite.
-     */
-    readRetiredHoverStores() {
-      const prefix = `hover-tweaks/${this.getWorkspaceGuidSafe()}/`;
-      let legacy = {};
-      let byGuid = {};
-      try {
-        for (let i = 0; i < localStorage.length; i++) {
-          const key = localStorage.key(i);
-          if (!key || !key.startsWith(prefix) || !key.endsWith("settings")) continue;
-          const parsed = this.readLocalSettings(key);
-          if (key === `${prefix}settings`) legacy = parsed;
-          else byGuid = { ...byGuid, ...parsed };
-        }
-      } catch {
-      }
-      const merged = { ...legacy, ...byGuid };
-      delete merged.zoomCursor;
-      delete merged.menuCursor;
-      delete merged.layoutDebug;
-      return merged;
-    }
-    /** Shallow merge; later argument wins. */
-    /** @param {any} base @param {any} overlay */
-    mergeSettings(base, overlay) {
-      const a = base && typeof base === "object" ? base : {};
-      const b = overlay && typeof overlay === "object" ? overlay : {};
-      return { ...a, ...b };
-    }
-    /** @param {string} key */
-    readLocalSettings(key) {
-      try {
-        const parsed = JSON.parse(localStorage.getItem(key) || "{}") || {};
-        return parsed && typeof parsed === "object" ? parsed : {};
-      } catch {
-        return {};
-      }
-    }
-    readCustomSettings() {
-      try {
-        const conf = this.getConfiguration?.();
-        const custom = conf && conf.custom;
-        const settings = custom && typeof custom === "object" ? custom.settings : null;
-        return settings && typeof settings === "object" ? settings : null;
-      } catch {
-        return null;
-      }
-    }
-    /** @param {any} raw */
     normalizeSettings(raw) {
       const s = raw && typeof raw === "object" ? raw : {};
       const indentMode = "indentMode" in s || !("outlineMode" in s) ? s.indentMode !== false : s.outlineMode !== false;
@@ -3504,10 +3769,10 @@ ${report}
       let next = value;
       if (typeof def === "boolean") next = Boolean(value);
       else if (typeof def === "string") next = String(value);
-      this.settings = { ...this.settings, [key]: next };
-      this.saveSettings();
+      this.settings = this._settingsStore.update({ [key]: next }).settings;
       this.applySettingsToDom();
       if (key === "altClickOpensMenu" || key === "alignHandleToCaret") this._renderPanel();
+      else this._refreshScopePill();
     }
     /** Live per-tick handle-offset edit: save + re-inject the rule, NO re-render. */
     /** @param {string} key @param {any} rawValue */
@@ -3515,77 +3780,43 @@ ${report}
       if (!(key in HANDLE_ALIGN_DEFAULTS)) return;
       const n = Number.parseFloat(rawValue);
       if (!Number.isFinite(n)) return;
-      this.settings = { ...this.settings, [key]: Math.round(n * 4) / 4 };
-      this.saveSettings();
+      this.settings = this._settingsStore.update({ [key]: Math.round(n * 4) / 4 }).settings;
       this.writeSettingsStyle();
+      this._refreshScopePill();
     }
-    saveSettings() {
-      const normalized = this.normalizeSettings(this.settings);
-      this.settings = normalized;
-      try {
-        localStorage.setItem(this.settingsStorageKey(), JSON.stringify(normalized));
-      } catch {
-      }
-      this._configSaveDirty = true;
-      this.scheduleConfigFlush();
+    /**
+     * Scope-cluster wiring for the header pill: push = one saveConfiguration
+     * (the reload's hot-reload heal re-renders the panel); discard = two-tap
+     * armed in the shared cluster, then re-adopt synced values here.
+     */
+    _scopeArgs() {
+      return {
+        diverged: this._settingsStore.isDiverged(),
+        onPush: /* @__PURE__ */ __name(() => {
+          void this._settingsStore.pushToAll().then((ok) => {
+            if (!ok) return;
+            try {
+              this.ui.addToaster({ title: "Editor Tweaks", message: "Settings applied to all devices", dismissible: true, autoDestroyTime: 3e3 });
+            } catch {
+            }
+            this._refreshScopePill();
+          });
+        }, "onPush"),
+        onDiscard: /* @__PURE__ */ __name(() => {
+          this.settings = this._settingsStore.discardLocal();
+          this.applySettingsToDom();
+          this._renderPanel();
+          try {
+            this.ui.addToaster({ title: "Editor Tweaks", message: "Reverted to synced settings", dismissible: true, autoDestroyTime: 3e3 });
+          } catch {
+          }
+        }, "onDiscard")
+      };
     }
-    scheduleConfigFlush() {
-      if (this._configFlushTimer) clearTimeout(this._configFlushTimer);
-      this._configFlushTimer = setTimeout(() => {
-        this._configFlushTimer = 0;
-        void this.flushConfigSave();
-      }, 900);
-    }
-    async flushConfigSave() {
-      if (this._configFlushTimer) {
-        clearTimeout(this._configFlushTimer);
-        this._configFlushTimer = 0;
-      }
-      if (this._configSaveInFlight) {
-        this._configSaveQueued = true;
-        return;
-      }
-      if (!this._configSaveDirty) return;
-      this._configSaveInFlight = true;
-      try {
-        const plugin = this.resolveGlobalPluginApi();
-        if (!plugin || typeof plugin.saveConfiguration !== "function") return;
-        const conf = (
-          /** @type {Record<string, any>} */
-          plugin.getConfiguration ? plugin.getConfiguration() : {}
-        );
-        const settings = this.normalizeSettings(this.settings);
-        const current = conf && conf.custom && typeof conf.custom === "object" ? conf.custom.settings : null;
-        if (JSON.stringify(this.normalizeSettings(current || {})) === JSON.stringify(settings)) {
-          this._configSaveDirty = false;
-          return;
-        }
-        await plugin.saveConfiguration(configWithPluginVersion(conf, { settings }, PLUGIN_VERSION));
-        this._configSaveDirty = false;
-      } catch {
-      } finally {
-        this._configSaveInFlight = false;
-        if (this._configSaveQueued && !this._isUnloading) {
-          this._configSaveQueued = false;
-          void this.flushConfigSave();
-        }
-      }
-    }
-    /** @returns {{ getConfiguration?: () => any, saveConfiguration?: (conf: any) => Promise<any> } | null} */
-    resolveGlobalPluginApi() {
-      try {
-        const guid = this.getGuid?.();
-        if (guid && this.data && typeof this.data.getPluginByGuid === "function") {
-          const byGuid = this.data.getPluginByGuid(guid);
-          if (byGuid && typeof byGuid.saveConfiguration === "function") return byGuid;
-        }
-      } catch {
-      }
-      const self = (
-        /** @type {any} */
-        this
-      );
-      return typeof self.saveConfiguration === "function" ? self : null;
+    /** Swap just the pill cluster — never nukes inputs mid-edit. */
+    _refreshScopePill() {
+      const el2 = this._panelEl?.querySelector?.(".tps-scope");
+      if (el2) el2.replaceWith(scopeCluster(this._scopeArgs()));
     }
     // ------------------------------------------------------------------
     // Applying settings to the DOM
@@ -3739,17 +3970,11 @@ ${report}
           icon: "ti-ruler",
           version: PLUGIN_VERSION,
           repository: "https://github.com/akaready/thymer-editor-tweaks",
+          scope: this._scopeArgs(),
           killSwitch: {
             on: !this._disabled,
             onToggle: /* @__PURE__ */ __name((nextOn) => {
-              if (this._configFlushTimer) {
-                clearTimeout(this._configFlushTimer);
-                this._configFlushTimer = 0;
-              }
-              this._configSaveDirty = false;
-              void setPluginDisabled(this, !nextOn, PLUGIN_VERSION, {
-                settings: this.normalizeSettings(this.settings)
-              });
+              void setPluginDisabled(this, !nextOn, PLUGIN_VERSION);
             }, "onToggle")
           },
           feedback: { data: this.data }
