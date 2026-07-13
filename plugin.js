@@ -472,6 +472,345 @@ var plugins = (() => {
   filter: brightness(1.2);
 }
 
+/* \u2500\u2500 Header controls: bug report + kill switch \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
+
+/* Last flex item of the attr row; margin-left:auto pins the group to the
+   right edge, align-self:center opts out of the row's baseline alignment. */
+.tps-plugin-header-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--tps-space-2, 8px);
+  margin-left: auto;
+  align-self: center;
+  padding-left: var(--tps-space-3, 12px);
+}
+
+.tps-plugin-header-bug {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--tps-radius-sm, 4px);
+  background: transparent;
+  color: var(--tps-text-muted);
+  cursor: pointer;
+  transition: color var(--tps-dur-fast, 80ms) var(--tps-ease-out, ease-out),
+              background-color var(--tps-dur-fast, 80ms) var(--tps-ease-out, ease-out),
+              border-color var(--tps-dur-fast, 80ms) var(--tps-ease-out, ease-out);
+}
+
+/* Undo the attr row's generic .ti treatment (translateY + margin) inside the button. */
+.tps-plugin-header-bug .ti {
+  width: 14px;
+  height: 14px;
+  font-size: 14px;
+  transform: none;
+  margin: 0;
+}
+
+.tps-plugin-header-bug:hover {
+  color: var(--tps-text);
+  background: var(--tps-bg-hover);
+  border-color: var(--tps-border);
+}
+
+.tps-plugin-header-bug:focus-visible {
+  outline: 2px solid var(--tps-accent);
+  outline-offset: 2px;
+}
+
+.tps-switch {
+  position: relative;
+  display: inline-flex;
+  flex: 0 0 auto;
+  width: 30px;
+  height: 16px;
+  padding: 0;
+  border: 1px solid var(--tps-border);
+  border-radius: var(--tps-radius-pill, 999px);
+  background: var(--tps-bg-input);
+  cursor: pointer;
+  transition: background-color var(--tps-dur-base, 160ms) var(--tps-ease-out, ease-out),
+              border-color var(--tps-dur-base, 160ms) var(--tps-ease-out, ease-out);
+}
+
+.tps-switch-knob {
+  position: absolute;
+  top: 1px;
+  left: 1px;
+  width: 12px;
+  height: 12px;
+  border-radius: var(--tps-radius-circle, 50%);
+  background: var(--tps-text-muted);
+  transition: transform var(--tps-dur-base, 160ms) var(--tps-ease-out, ease-out),
+              background-color var(--tps-dur-base, 160ms) var(--tps-ease-out, ease-out);
+}
+
+.tps-switch[aria-checked="true"] {
+  background: var(--tps-accent);
+  border-color: var(--tps-accent);
+}
+
+.tps-switch[aria-checked="true"] .tps-switch-knob {
+  transform: translateX(14px);
+  background: var(--tps-on-accent, #fff);
+}
+
+.tps-switch:focus-visible {
+  outline: 2px solid var(--tps-accent);
+  outline-offset: 2px;
+}
+
+.tps-switch[data-busy],
+.tps-switch:disabled {
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+/* Off-state "safe mode": dim the body, keep it interactive \u2014 edits stage in the
+   plugin's local drafts and apply on re-enable. Keyed off the pill's aria state
+   so the optimistic flip dims instantly and heal re-renders stay correct with
+   no JS. The header (pill, bug button, off-note) stays full opacity \u2014 exclude
+   any direct child containing it (collection-icons wraps the header in a row
+   element, so exclude by content, not class). */
+.tps-panel:has(.tps-plugin-header .tps-switch[aria-checked="false"]) > :not(:has(.tps-plugin-header)) {
+  opacity: 0.65;
+  transition: opacity var(--tps-dur-base, 160ms) var(--tps-ease-out, ease-out);
+}
+
+/* Rendered whenever the header has a kill switch; shown only while it's off. */
+.tps-plugin-header-off-note {
+  display: none;
+  margin: var(--tps-space-2, 8px) 0 0;
+  font-size: var(--tps-fs-hint, 12px);
+  line-height: var(--tps-lh-base, 1.4);
+  color: var(--tps-text-muted);
+}
+
+.tps-plugin-header:has(.tps-switch[aria-checked="false"]) .tps-plugin-header-off-note {
+  display: block;
+}
+
+/* \u2500\u2500 Feedback dialog (panel-scoped modal) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
+
+/* The overlay positions against the .tps-panel root (the scroll container). */
+.tps-panel {
+  position: relative;
+}
+
+.tps-feedback-overlay {
+  position: absolute;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--tps-space-4);
+  background: color-mix(in srgb, var(--panel-bg-color, light-dark(#ffffff, #131316)) 55%, transparent);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+
+@supports not ((backdrop-filter: blur(6px)) or (-webkit-backdrop-filter: blur(6px))) {
+  .tps-feedback-overlay {
+    background: color-mix(in srgb, var(--panel-bg-color, light-dark(#ffffff, #131316)) 90%, transparent);
+  }
+}
+
+/* Flex column with a growing description field: the card stretches to the
+   available panel height (capped) and the textarea absorbs the difference,
+   so the card itself never needs a scrollbar. */
+.tps-feedback-card {
+  display: flex;
+  flex-direction: column;
+  width: min(440px, 100%);
+  height: min(760px, 100%);
+  overflow: auto;
+  background: var(--panel-bg-color, light-dark(#ffffff, #17171b));
+  border: 1px solid var(--tps-border);
+  border-radius: var(--tps-radius-lg);
+  padding: var(--tps-space-4);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+}
+
+/* Rows keep their natural height \u2014 when content doesn't fit (e.g. the system
+   report drawer opens in a short panel) the CARD scrolls; rows must never be
+   squeezed into overlapping each other. Only the description field flexes. */
+.tps-feedback-card > * {
+  flex: 0 0 auto;
+}
+
+.tps-feedback-card > .tps-feedback-field--grow {
+  flex: 1 1 auto;
+}
+
+.tps-feedback-field--grow {
+  display: flex;
+  flex-direction: column;
+}
+
+.tps-feedback-field--grow .tps-feedback-textarea {
+  flex: 1 1 auto;
+  min-height: 72px;
+}
+
+.tps-feedback-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0 0 var(--tps-space-2);
+}
+
+.tps-feedback-title {
+  margin: 0;
+  font-size: var(--tps-fs-label, 12.5px);
+  font-weight: var(--tps-fw-semibold, 600);
+  letter-spacing: var(--tps-ls-section, 0.06em);
+  text-transform: uppercase;
+  color: var(--tps-text);
+}
+
+.tps-feedback-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--tps-radius-sm, 4px);
+  background: transparent;
+  color: var(--tps-text-muted);
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.tps-feedback-close:hover {
+  color: var(--tps-text);
+  background: var(--tps-bg-hover);
+  border-color: var(--tps-border);
+}
+
+.tps-feedback-close:focus-visible {
+  outline: 2px solid var(--tps-accent);
+  outline-offset: 2px;
+}
+
+.tps-feedback-hint {
+  margin: 0 0 var(--tps-space-3);
+  font-size: var(--tps-fs-hint, 12px);
+  line-height: var(--tps-lh-base, 1.4);
+  color: var(--tps-text-muted);
+}
+
+.tps-feedback-field {
+  display: block;
+  margin: 0 0 var(--tps-space-3);
+}
+
+.tps-feedback-label {
+  display: block;
+  margin: 0 0 var(--tps-space-1);
+  font-size: var(--tps-fs-label, 12.5px);
+  font-weight: var(--tps-fw-medium, 500);
+  color: var(--tps-text);
+}
+
+.tps-feedback-input,
+.tps-feedback-textarea {
+  width: 100%;
+  padding: var(--tps-space-1, 4px) var(--tps-space-2, 8px);
+  font-family: inherit;
+  font-size: var(--tps-fs-body, 13px);
+  line-height: var(--tps-lh-base, 1.4);
+  color: var(--tps-text);
+  background: var(--tps-bg-input);
+  border: 1px solid var(--tps-border);
+  border-radius: var(--tps-radius-sm, 4px);
+}
+
+.tps-feedback-textarea {
+  resize: vertical;
+  min-height: 72px;
+}
+
+.tps-feedback-input:focus,
+.tps-feedback-textarea:focus {
+  outline: none;
+  border-color: color-mix(in srgb, var(--tps-accent) 60%, transparent);
+}
+
+.tps-feedback-input[aria-invalid="true"],
+.tps-feedback-textarea[aria-invalid="true"] {
+  border-color: var(--tps-danger);
+}
+
+.tps-feedback-details {
+  margin: 0 0 var(--tps-space-3);
+}
+
+.tps-feedback-summary {
+  font-size: var(--tps-fs-hint, 12px);
+  color: var(--tps-text-muted);
+  cursor: pointer;
+}
+
+.tps-feedback-summary:hover {
+  color: var(--tps-text);
+}
+
+.tps-feedback-report {
+  margin: var(--tps-space-2) 0 0;
+  padding: var(--tps-space-2);
+  max-height: 140px;
+  overflow: auto;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Courier New", monospace;
+  font-size: 11px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--tps-text-muted);
+  background: var(--tps-bg-input);
+  border: 1px solid var(--tps-divider);
+  border-radius: var(--tps-radius-sm, 4px);
+}
+
+/* Themed thin scrollbars \u2014 the card (short panels) and the report pre both scroll. */
+.tps-feedback-card,
+.tps-feedback-report {
+  scrollbar-width: thin;
+  scrollbar-color: var(--tps-border, rgba(127, 127, 127, 0.25)) transparent;
+}
+
+.tps-feedback-card::-webkit-scrollbar,
+.tps-feedback-report::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.tps-feedback-card::-webkit-scrollbar-track,
+.tps-feedback-report::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.tps-feedback-card::-webkit-scrollbar-thumb,
+.tps-feedback-report::-webkit-scrollbar-thumb {
+  background: var(--tps-border, rgba(127, 127, 127, 0.25));
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+.tps-feedback-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--tps-space-2);
+}
+
 /* \u2500\u2500 Section \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
 
 .tps-section {
@@ -1375,39 +1714,301 @@ var plugins = (() => {
 }
 `;
 
+  // ../../shared/settings-ui/feedback.js
+  var MAX_URL_LENGTH = 7600;
+  function el(tag, props, ...children) {
+    const node = document.createElement(tag);
+    const dom = (
+      /** @type {any} */
+      node
+    );
+    if (props) {
+      for (const k in props) {
+        const v = props[k];
+        if (v == null || v === false) continue;
+        if (k === "class") node.className = v;
+        else if (k.startsWith("on") && typeof v === "function") node.addEventListener(k.slice(2).toLowerCase(), v);
+        else if (k in dom && typeof dom[k] !== "function") {
+          try {
+            dom[k] = v;
+          } catch {
+            node.setAttribute(k, v);
+          }
+        } else node.setAttribute(k, v === true ? "" : String(v));
+      }
+    }
+    for (const c of children.flat(Infinity)) {
+      if (c == null || c === false) continue;
+      node.appendChild(c instanceof Node ? c : document.createTextNode(String(c)));
+    }
+    return node;
+  }
+  __name(el, "el");
+  function versionFromConf(conf) {
+    if (!conf || typeof conf !== "object") return "";
+    if (typeof conf.version === "string" && conf.version) return conf.version;
+    const custom = conf.custom;
+    if (custom && typeof custom === "object") {
+      const v = (
+        /** @type {Record<string, unknown>} */
+        custom.pluginVersion
+      );
+      if (typeof v === "string") return v;
+    }
+    return "";
+  }
+  __name(versionFromConf, "versionFromConf");
+  async function collectSystemReport({ pluginName = "", pluginVersion = "", disabled = false, data } = {}) {
+    const ua = navigator.userAgent || "";
+    const lines = [];
+    lines.push(`Plugin: ${pluginName} v${pluginVersion}${disabled ? " (kill switch: OFF)" : ""}`);
+    lines.push(`App: ${/electron/i.test(ua) ? "Thymer desktop app (Electron)" : "Thymer web"}${location && location.host ? ` \xB7 ${location.host}` : ""}`);
+    lines.push(`UA: ${ua}`);
+    lines.push(`Platform: ${navigator.platform || "?"} \xB7 lang ${navigator.language || "?"} \xB7 tz ${Intl.DateTimeFormat().resolvedOptions().timeZone || "?"}`);
+    const dpr = Math.round((window.devicePixelRatio || 1) * 100) / 100;
+    lines.push(`Screen (css px): ${screen.width}x${screen.height} @${dpr}x (\u2248${Math.round(screen.width * dpr)}x${Math.round(screen.height * dpr)} device px) \xB7 viewport ${window.innerWidth}x${window.innerHeight}`);
+    try {
+      const dark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+      const reducedMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      const themeClasses = Array.from(document.body.classList).filter((c) => /theme/i.test(c)).join(" ");
+      lines.push(`Appearance: ${dark ? "dark" : "light"}${reducedMotion ? " \xB7 reduced-motion" : ""}${themeClasses ? ` \xB7 body: ${themeClasses}` : ""}`);
+    } catch {
+    }
+    try {
+      const bits = [];
+      if (navigator.hardwareConcurrency) bits.push(`${navigator.hardwareConcurrency} cores`);
+      const devMem = (
+        /** @type {any} */
+        navigator.deviceMemory
+      );
+      if (devMem) bits.push(devMem >= 8 ? `RAM \u22658GB (API cap)` : `~${devMem}GB RAM`);
+      const heap = (
+        /** @type {any} */
+        performance.memory
+      );
+      if (heap && heap.usedJSHeapSize) bits.push(`JS heap ${Math.round(heap.usedJSHeapSize / 1048576)}MB of ${Math.round(heap.jsHeapSizeLimit / 1048576)}MB limit`);
+      bits.push(navigator.onLine === false ? "OFFLINE" : "online");
+      if (typeof performance.now === "function") bits.push(`session up ${Math.round(performance.now() / 6e4)}m`);
+      lines.push(`System: ${bits.join(" \xB7 ")}`);
+    } catch {
+    }
+    try {
+      if (navigator.storage && typeof navigator.storage.estimate === "function") {
+        const est = await navigator.storage.estimate();
+        if (est && est.usage != null) {
+          lines.push(`Storage: ${Math.round((est.usage || 0) / 1048576)}MB used${est.quota ? ` of ${Math.round(est.quota / 1048576)}MB quota` : ""}`);
+        }
+      }
+    } catch {
+    }
+    try {
+      if (data && typeof data.getAllGlobalPlugins === "function") {
+        const plugins = await data.getAllGlobalPlugins();
+        const listed = plugins.slice(0, 25).map((p) => {
+          let name = "";
+          let ver = "";
+          try {
+            name = p.getName?.() || "";
+          } catch {
+          }
+          try {
+            ver = versionFromConf(p.getConfiguration?.());
+          } catch {
+          }
+          return ver ? `${name} v${ver}` : name;
+        }).filter(Boolean);
+        if (listed.length) {
+          lines.push(`Global plugins, all installed (${plugins.length}): ${listed.join(", ")}${plugins.length > 25 ? ", \u2026" : ""}`);
+        }
+      }
+      if (data && typeof /** @type {any} */
+      data.getAllCollections === "function") {
+        const collections = await /** @type {any} */
+        data.getAllCollections();
+        if (Array.isArray(collections)) lines.push(`Collection-level plugins: ${collections.length} (names withheld)`);
+      }
+    } catch {
+    }
+    return lines.join("\n");
+  }
+  __name(collectSystemReport, "collectSystemReport");
+  function buildIssueUrl({ repository, description, discord, email, report }) {
+    const repo = repository.replace(/\/+$/, "");
+    const firstLine = description.split("\n")[0].trim();
+    const title = `[bug] ${firstLine.length > 60 ? `${firstLine.slice(0, 57)}...` : firstLine}`;
+    const bodyFor = /* @__PURE__ */ __name((desc2) => {
+      const parts = [`**Describe the bug**
+
+${desc2}`];
+      if (discord || email) {
+        const contact = [];
+        if (discord) contact.push(`- Discord: ${discord}`);
+        if (email) contact.push(`- Email: ${email}`);
+        parts.push(`**Contact**
+
+${contact.join("\n")}`);
+      }
+      parts.push(`**System report**
+
+\`\`\`
+${report}
+\`\`\``);
+      parts.push("_Screenshots: paste or drag images directly into this text box._");
+      return parts.join("\n\n");
+    }, "bodyFor");
+    const urlFor = /* @__PURE__ */ __name((desc2) => `${repo}/issues/new?${new URLSearchParams({ title, body: bodyFor(desc2) })}`, "urlFor");
+    let desc = description;
+    let url = urlFor(desc);
+    while (url.length > MAX_URL_LENGTH && desc.length > 200) {
+      desc = `${desc.slice(0, Math.max(200, desc.length - 500)).trimEnd()}
+
+[description truncated \u2014 URL length limit]`;
+      url = urlFor(desc);
+    }
+    return url;
+  }
+  __name(buildIssueUrl, "buildIssueUrl");
+  function openFeedbackDialog({ host, opener, pluginName = "", pluginVersion = "", repository = "", disabled = false, data } = {}) {
+    const panelHost = host || /** @type {HTMLElement | null} */
+    (opener ? opener.closest(".tps-panel") : null);
+    if (!panelHost || !repository) return;
+    if (panelHost.querySelector(".tps-feedback-overlay")) return;
+    const repoLabel = repository.replace(/^https?:\/\/(www\.)?github\.com\//i, "").replace(/\/+$/, "");
+    const reportPromise = collectSystemReport({ pluginName, pluginVersion, disabled, data });
+    const discordInput = el("input", { class: "tps-feedback-input", type: "text", placeholder: "e.g. akaready", autocomplete: "off", spellcheck: "false" });
+    const emailInput = el("input", { class: "tps-feedback-input", type: "email", placeholder: "e.g. you@example.com", autocomplete: "off", spellcheck: "false" });
+    const descInput = el("textarea", { class: "tps-feedback-textarea", rows: "5", placeholder: "What happened? What did you expect instead?" });
+    const reportPre = el("pre", { class: "tps-feedback-report" }, "Collecting\u2026");
+    reportPromise.then((text) => {
+      reportPre.textContent = text;
+    }).catch(() => {
+      reportPre.textContent = "Report unavailable.";
+    });
+    const fieldRow = /* @__PURE__ */ __name((label, field, extraClass) => el(
+      "label",
+      { class: `tps-feedback-field${extraClass ? ` ${extraClass}` : ""}` },
+      el("span", { class: "tps-feedback-label" }, label),
+      field
+    ), "fieldRow");
+    const prevOverflow = panelHost.style.overflow;
+    const close = /* @__PURE__ */ __name(() => {
+      overlay.remove();
+      panelHost.style.overflow = prevOverflow;
+      try {
+        opener?.focus();
+      } catch {
+      }
+    }, "close");
+    const submit = /* @__PURE__ */ __name(async () => {
+      const description = descInput.value.trim();
+      if (!description) {
+        descInput.setAttribute("aria-invalid", "true");
+        descInput.focus();
+        return;
+      }
+      let report = "";
+      try {
+        report = await reportPromise;
+      } catch {
+      }
+      const url = buildIssueUrl({
+        repository,
+        description,
+        discord: discordInput.value.trim(),
+        email: emailInput.value.trim(),
+        report
+      });
+      window.open(url, "_blank", "noopener");
+      close();
+    }, "submit");
+    const card = el(
+      "div",
+      { class: "tps-feedback-card", role: "dialog", "aria-modal": "true", "aria-label": `Report a bug in ${pluginName}` },
+      el(
+        "div",
+        { class: "tps-feedback-head" },
+        el("h2", { class: "tps-feedback-title" }, "Report a bug"),
+        el(
+          "button",
+          { type: "button", class: "tps-feedback-close", "aria-label": "Close", onClick: close },
+          el("i", { class: "ti ti-x", "aria-hidden": "true" })
+        )
+      ),
+      el(
+        "p",
+        { class: "tps-feedback-hint" },
+        `Opens a prefilled GitHub issue on ${repoLabel}.`,
+        el("br"),
+        "Please paste screenshots into the GitHub form after it opens."
+      ),
+      fieldRow("Discord username (optional)", discordInput),
+      fieldRow("Email (optional)", emailInput),
+      fieldRow("What happened?", descInput, "tps-feedback-field--grow"),
+      el(
+        "details",
+        { class: "tps-feedback-details" },
+        el("summary", { class: "tps-feedback-summary" }, "System report (included with the issue)"),
+        reportPre
+      ),
+      el(
+        "div",
+        { class: "tps-feedback-actions" },
+        el("button", { type: "button", class: "tps-button tps-button--ghost", onClick: close }, "Cancel"),
+        el("button", { type: "button", class: "tps-button tps-button--primary", onClick: submit }, "Open GitHub issue")
+      )
+    );
+    const overlay = el("div", { class: "tps-feedback-overlay" }, card);
+    overlay.addEventListener("mousedown", (e) => {
+      if (e.target === overlay) close();
+    });
+    overlay.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") {
+        e.stopPropagation();
+        close();
+      }
+    });
+    descInput.addEventListener("input", () => descInput.removeAttribute("aria-invalid"));
+    panelHost.style.overflow = "hidden";
+    overlay.style.top = `${panelHost.scrollTop}px`;
+    overlay.style.height = `${panelHost.clientHeight}px`;
+    panelHost.appendChild(overlay);
+    descInput.focus();
+  }
+  __name(openFeedbackDialog, "openFeedbackDialog");
+
   // ../../shared/settings-ui/helpers.js
   var PANEL_CSS = tokens_default + "\n" + components_default + "\n" + color_field_default;
   function h(tag, props, ...children) {
-    const el = document.createElement(tag);
+    const el2 = document.createElement(tag);
     const dom = (
       /** @type {any} */
-      el
+      el2
     );
     if (props) {
       for (const k in props) {
         const v = props[k];
         if (v == null || v === false) continue;
         if (k === "class" || k === "className") {
-          el.className = v;
+          el2.className = v;
         } else if (k === "style" && typeof v === "object") {
-          Object.assign(el.style, v);
+          Object.assign(el2.style, v);
         } else if (k === "dataset" && typeof v === "object") {
-          for (const dk in v) el.dataset[dk] = v[dk];
+          for (const dk in v) el2.dataset[dk] = v[dk];
         } else if (k.startsWith("on") && typeof v === "function") {
-          el.addEventListener(k.slice(2).toLowerCase(), v);
+          el2.addEventListener(k.slice(2).toLowerCase(), v);
         } else if (k in dom && typeof dom[k] !== "function") {
           try {
             dom[k] = v;
           } catch {
-            el.setAttribute(k, v);
+            el2.setAttribute(k, v);
           }
         } else {
-          el.setAttribute(k, v === true ? "" : String(v));
+          el2.setAttribute(k, v === true ? "" : String(v));
         }
       }
     }
-    appendChildren(el, children);
-    return el;
+    appendChildren(el2, children);
+    return el2;
   }
   __name(h, "h");
   function appendChildren(parent, children) {
@@ -1438,10 +2039,19 @@ var plugins = (() => {
     author = "@akaready",
     homepage = "https://akaready.com",
     repository = "https://github.com/akaready",
-    coffee = "https://buymeacoffee.com/akaready"
+    coffee = "https://buymeacoffee.com/akaready",
+    killSwitch = null,
+    feedback = null
   }) {
     const iconClass = icon ? icon.startsWith("ti-") ? icon : `ti-${icon}` : "";
     const helperLines = normalizeHelperLines(helper);
+    const fb = feedback ? {
+      pluginName: (feedback === true ? "" : feedback.pluginName) || heading,
+      pluginVersion: (feedback === true ? "" : feedback.pluginVersion) || version,
+      repository: (feedback === true ? "" : feedback.repository) || repository,
+      disabled: (feedback === true ? void 0 : feedback.disabled) ?? (killSwitch ? !killSwitch.on : false),
+      data: feedback === true ? void 0 : feedback.data
+    } : null;
     const children = [
       iconClass ? h(
         "div",
@@ -1486,12 +2096,78 @@ var plugins = (() => {
           { class: "tps-plugin-header-link-group" },
           h("span", { class: "tps-plugin-header-icon tps-plugin-header-iconify tps-plugin-header-iconify-github", "aria-hidden": "true" }),
           h("a", { class: "tps-plugin-header-link tps-plugin-header-link--muted tps-plugin-header-version", href: repository, target: "_blank", rel: "noopener noreferrer" }, `v${version}`)
+        ) : null,
+        fb || killSwitch ? h(
+          "span",
+          { class: "tps-plugin-header-controls" },
+          fb ? renderFeedbackButton(fb) : null,
+          killSwitch ? renderKillSwitch(killSwitch) : null
         ) : null
-      )
+      ),
+      // Always rendered with a kill switch; CSS shows it only while the pill is
+      // off, so it appears instantly on the optimistic flip with no re-render.
+      killSwitch ? h(
+        "p",
+        { class: "tps-plugin-header-off-note" },
+        "Plugin is off \u2014 settings stay editable and your changes apply when you switch it back on."
+      ) : null
     ];
     return h("div", { class: "tps-plugin-header" }, ...children);
   }
   __name(pluginHeader, "pluginHeader");
+  function renderFeedbackButton(fb) {
+    return h("button", {
+      type: "button",
+      class: "tps-plugin-header-bug",
+      title: "Report a bug",
+      "aria-label": "Report a bug",
+      onClick: /* @__PURE__ */ __name((e) => {
+        const btn = (
+          /** @type {HTMLElement} */
+          e.currentTarget
+        );
+        openFeedbackDialog({
+          host: (
+            /** @type {HTMLElement | null} */
+            btn.closest(".tps-panel")
+          ),
+          opener: btn,
+          ...fb
+        });
+      }, "onClick")
+    }, h("i", { class: "ti ti-bug", "aria-hidden": "true" }));
+  }
+  __name(renderFeedbackButton, "renderFeedbackButton");
+  function renderKillSwitch(killSwitch) {
+    const sw = h("button", {
+      type: "button",
+      class: "tps-switch",
+      role: "switch",
+      "aria-checked": String(!!killSwitch.on),
+      "aria-label": killSwitch.label || "Plugin enabled",
+      title: killSwitch.on ? "Plugin enabled \u2014 click to disable all of its effects" : "Plugin disabled \u2014 click to re-enable"
+    }, h("span", { class: "tps-switch-knob" }));
+    const unlock = /* @__PURE__ */ __name(() => {
+      sw.removeAttribute("data-busy");
+      sw.disabled = false;
+    }, "unlock");
+    sw.addEventListener("click", () => {
+      if (sw.disabled) return;
+      const nextOn = sw.getAttribute("aria-checked") !== "true";
+      sw.setAttribute("aria-checked", String(nextOn));
+      sw.setAttribute("data-busy", "");
+      sw.disabled = true;
+      setTimeout(unlock, 700);
+      try {
+        killSwitch.onToggle(nextOn);
+      } catch {
+        unlock();
+        sw.setAttribute("aria-checked", String(!nextOn));
+      }
+    });
+    return sw;
+  }
+  __name(renderKillSwitch, "renderKillSwitch");
   function normalizeHelperLines(helper) {
     if (!helper) return [];
     if (typeof helper === "string") {
@@ -1700,7 +2376,7 @@ var plugins = (() => {
   function _fireTelemetry(path) {
     _loadGoatCounter().then(() => {
       try {
-        window.goatcounter.count({ path, title: "", event: false });
+        window.goatcounter?.count?.({ path, title: "", event: false });
       } catch (_) {
       }
     });
@@ -1744,7 +2420,10 @@ var plugins = (() => {
   function readPluginVersion(conf, fallback = "0.0.1") {
     if (!conf || typeof conf !== "object") return fallback;
     if (typeof conf.version === "string" && conf.version) return conf.version;
-    const custom = conf.custom;
+    const custom = (
+      /** @type {Record<string, unknown> | undefined} */
+      conf.custom
+    );
     if (custom && typeof custom === "object" && typeof custom.pluginVersion === "string" && custom.pluginVersion) {
       return custom.pluginVersion;
     }
@@ -1765,11 +2444,33 @@ var plugins = (() => {
     };
   }
   __name(configWithPluginVersion, "configWithPluginVersion");
+  async function resolveConfigApi(plugin) {
+    if (!plugin) return null;
+    if (typeof plugin.saveConfiguration === "function") return plugin;
+    try {
+      const guid = typeof plugin.getGuid === "function" ? plugin.getGuid() : null;
+      const data = plugin.data;
+      if (guid && data && typeof data.getPluginByGuid === "function") {
+        const byGuid = data.getPluginByGuid(guid);
+        if (byGuid && typeof byGuid.saveConfiguration === "function") return byGuid;
+      }
+      if (data && typeof data.getAllGlobalPlugins === "function") {
+        const all = await data.getAllGlobalPlugins();
+        const name = plugin.getConfiguration?.()?.name;
+        const found = all.find((p) => p && typeof p.getGuid === "function" && p.getGuid() === guid) || (name ? all.find((p) => p && typeof p.getName === "function" && p.getName() === name) : null);
+        if (found && typeof found.saveConfiguration === "function") return found;
+      }
+    } catch {
+    }
+    return null;
+  }
+  __name(resolveConfigApi, "resolveConfigApi");
   async function syncPluginVersionOnLoad(plugin, pluginVersion, customPatch = {}) {
-    if (!plugin || typeof plugin.saveConfiguration !== "function") return;
+    const api = await resolveConfigApi(plugin);
+    if (!api) return;
     let conf = {};
     try {
-      conf = plugin.getConfiguration?.() || {};
+      conf = api.getConfiguration?.() || plugin.getConfiguration?.() || {};
     } catch {
       return;
     }
@@ -1778,14 +2479,98 @@ var plugins = (() => {
     conf.custom, ...customPatch } : { ...customPatch };
     if (readPluginVersion(conf, "") === pluginVersion) return;
     try {
-      await plugin.saveConfiguration(configWithPluginVersion(conf, custom, pluginVersion));
+      await api.saveConfiguration(configWithPluginVersion(conf, custom, pluginVersion));
     } catch {
     }
   }
   __name(syncPluginVersionOnLoad, "syncPluginVersionOnLoad");
 
+  // ../../shared/plugin-kill-switch.js
+  var MARKER_SYNC_HORIZON_MS = 9e4;
+  function isPluginDisabled(conf) {
+    if (!conf || typeof conf !== "object") return false;
+    const custom = conf.custom;
+    return !!(custom && typeof custom === "object" && /** @type {Record<string, unknown>} */
+    custom.pluginDisabled === true);
+  }
+  __name(isPluginDisabled, "isPluginDisabled");
+  function markerKey(plugin) {
+    let ws = "default";
+    try {
+      ws = plugin.getWorkspaceGuid?.() || "default";
+    } catch {
+    }
+    let name = "plugin";
+    try {
+      name = plugin.getConfiguration?.()?.name || "plugin";
+    } catch {
+    }
+    return `tps-kill-switch/${ws}/${name}`;
+  }
+  __name(markerKey, "markerKey");
+  function writeKillSwitchMarker(plugin, disabled) {
+    try {
+      localStorage.setItem(markerKey(plugin), JSON.stringify({ disabled, ts: Date.now() }));
+    } catch {
+    }
+  }
+  __name(writeKillSwitchMarker, "writeKillSwitchMarker");
+  function clearKillSwitchMarker(plugin) {
+    try {
+      localStorage.removeItem(markerKey(plugin));
+    } catch {
+    }
+  }
+  __name(clearKillSwitchMarker, "clearKillSwitchMarker");
+  function readKillSwitch(plugin) {
+    let conf = {};
+    try {
+      conf = plugin.getConfiguration?.() || {};
+    } catch {
+    }
+    const confDisabled = isPluginDisabled(conf);
+    try {
+      const raw = localStorage.getItem(markerKey(plugin));
+      if (raw) {
+        const marker = JSON.parse(raw);
+        if (marker && typeof marker.disabled === "boolean") {
+          if (marker.disabled === confDisabled) {
+            clearKillSwitchMarker(plugin);
+            return confDisabled;
+          }
+          if (Date.now() - (Number(marker.ts) || 0) < MARKER_SYNC_HORIZON_MS) {
+            return marker.disabled;
+          }
+          clearKillSwitchMarker(plugin);
+        }
+      }
+    } catch {
+    }
+    return confDisabled;
+  }
+  __name(readKillSwitch, "readKillSwitch");
+  async function setPluginDisabled(plugin, disabled, pluginVersion, customPatch = {}) {
+    const api = await resolveConfigApi(plugin);
+    if (!api) return;
+    let conf = {};
+    try {
+      conf = api.getConfiguration?.() || plugin.getConfiguration?.() || {};
+    } catch {
+      return;
+    }
+    if (typeof conf.name !== "string" || !conf.name.trim()) return;
+    if (readKillSwitch(plugin) === disabled && isPluginDisabled(conf) === disabled) return;
+    writeKillSwitchMarker(plugin, disabled);
+    try {
+      await api.saveConfiguration(configWithPluginVersion(conf, { ...customPatch, pluginDisabled: disabled }, pluginVersion));
+    } catch {
+      clearKillSwitchMarker(plugin);
+    }
+  }
+  __name(setPluginDisabled, "setPluginDisabled");
+
   // plugin.js
-  var PLUGIN_VERSION = "1.0.4";
+  var PLUGIN_VERSION = "1.1.3";
   var ROOT_CLASS = "plg-editor-tweaks";
   var PANEL_TYPE = "editor-tweaks-settings";
   var BODY_CLASS = "et-enabled";
@@ -1927,10 +2712,10 @@ var plugins = (() => {
     onDocumentClickCloseCursors = /* @__PURE__ */ __name((event) => {
       const target = event.target;
       if (target instanceof Element && target.closest(".et-cursor-picker")) return;
-      this._panelEl?.querySelectorAll?.(".et-cursor-picker").forEach((el) => {
-        if (!(el instanceof HTMLElement)) return;
-        const btn = el.querySelector(".et-cursor-summary");
-        const dropdown = el.querySelector(".et-cursor-dropdown");
+      this._panelEl?.querySelectorAll?.(".et-cursor-picker").forEach((el2) => {
+        if (!(el2 instanceof HTMLElement)) return;
+        const btn = el2.querySelector(".et-cursor-summary");
+        const dropdown = el2.querySelector(".et-cursor-dropdown");
         if (btn instanceof HTMLElement) btn.setAttribute("aria-expanded", "false");
         if (dropdown instanceof HTMLElement) dropdown.hidden = true;
       });
@@ -1938,8 +2723,17 @@ var plugins = (() => {
     onLoad() {
       pingInstall("editor-tweaks");
       pingActive("editor-tweaks");
-      syncPluginVersionOnLoad(this, PLUGIN_VERSION);
-      this._handlerIds = [];
+      try {
+        if (sessionStorage.getItem("et-version-synced") !== PLUGIN_VERSION) {
+          sessionStorage.setItem("et-version-synced", PLUGIN_VERSION);
+          syncPluginVersionOnLoad(this, PLUGIN_VERSION);
+        }
+      } catch {
+        syncPluginVersionOnLoad(this, PLUGIN_VERSION);
+      }
+      this._disabled = readKillSwitch(this);
+      this._handlerIds = /** @type {string[]} */
+      [];
       this._settingsStyleEl = null;
       this._commandItem = null;
       this._panelEl = null;
@@ -1955,11 +2749,8 @@ var plugins = (() => {
       this._styleObs = null;
       this.settings = this.loadSettings();
       this.cleanupPredecessorState();
-      document.body.classList.add(BODY_CLASS);
       this.cleanupInjectedStyles();
       this.ui.injectCSS(PANEL_CSS);
-      this.ui.injectCSS(this.getCSS());
-      this.applySettingsToDom();
       this._commandItem = this.ui.addCommandPaletteCommand({
         label: "Plugin: Editor Tweaks",
         icon: "ruler",
@@ -1975,6 +2766,31 @@ var plugins = (() => {
         this._panelEl = root;
         this._renderPanel();
       });
+      this._handlerIds.push(this.events.on("panel.closed", () => this.flushConfigSave()));
+      this._pageLifecycleListener = () => this.flushConfigSave();
+      try {
+        window.addEventListener("pagehide", this._pageLifecycleListener);
+      } catch {
+      }
+      this._visibilityListener = () => {
+        if (document.visibilityState === "hidden") this.flushConfigSave();
+      };
+      try {
+        document.addEventListener("visibilitychange", this._visibilityListener);
+      } catch {
+      }
+      try {
+        const staleRoot = document.querySelector(".plg-editor-tweaks-panel");
+        if (staleRoot && staleRoot.parentElement) {
+          this._panelEl = staleRoot.parentElement;
+          this._renderPanel();
+        }
+      } catch {
+      }
+      if (this._disabled) return;
+      document.body.classList.add(BODY_CLASS);
+      this.ui.injectCSS(this.getCSS());
+      this.applySettingsToDom();
       document.addEventListener("click", this.onClickCapture, true);
       document.addEventListener("pointerdown", this.onPointerDownCapture, true);
       document.addEventListener("pointerup", this.onPointerUpCapture, true);
@@ -1985,21 +2801,19 @@ var plugins = (() => {
       window.addEventListener("blur", this.onWindowBlur);
       document.addEventListener("click", this.onDocumentClickCloseCursors, false);
       this._installObservers();
-      this._handlerIds.push(this.events.on("panel.closed", () => this.flushConfigSave()));
-      this._pageLifecycleListener = () => this.flushConfigSave();
-      try {
-        window.addEventListener("pagehide", this._pageLifecycleListener);
-      } catch {
-      }
-      try {
-        document.addEventListener("visibilitychange", this._pageLifecycleListener);
-      } catch {
-      }
       this._schedulePass();
       setTimeout(() => this._schedulePass(), 120);
       setTimeout(() => this._schedulePass(), 500);
       setTimeout(() => this._schedulePass(), 1200);
-      this.saveSettings();
+      try {
+        localStorage.setItem(this.settingsStorageKey(), JSON.stringify(this.settings));
+      } catch {
+      }
+      const storedNormalized = JSON.stringify(this.normalizeSettings(this.readCustomSettings() || {}));
+      if (storedNormalized !== JSON.stringify(this.normalizeSettings(this.settings))) {
+        this._configSaveDirty = true;
+        this.scheduleConfigFlush();
+      }
     }
     onUnload() {
       this._isUnloading = true;
@@ -2010,7 +2824,8 @@ var plugins = (() => {
         } catch {
         }
       }
-      this._handlerIds = [];
+      this._handlerIds = /** @type {string[]} */
+      [];
       document.removeEventListener("click", this.onClickCapture, true);
       document.removeEventListener("pointerdown", this.onPointerDownCapture, true);
       document.removeEventListener("pointerup", this.onPointerUpCapture, true);
@@ -2022,11 +2837,11 @@ var plugins = (() => {
       document.removeEventListener("click", this.onDocumentClickCloseCursors, false);
       this._teardownObservers();
       try {
-        window.removeEventListener("pagehide", this._pageLifecycleListener);
+        if (this._pageLifecycleListener) window.removeEventListener("pagehide", this._pageLifecycleListener);
       } catch {
       }
       try {
-        document.removeEventListener("visibilitychange", this._pageLifecycleListener);
+        if (this._visibilityListener) document.removeEventListener("visibilitychange", this._visibilityListener);
       } catch {
       }
       if (this._configFlushTimer) {
@@ -2080,14 +2895,14 @@ var plugins = (() => {
       }
       document.getElementById("hc-settings-style")?.remove();
       document.getElementById("ht-settings-style")?.remove();
-      document.querySelectorAll(".hc-current, .hc-live, .hc-row-folded").forEach((el) => {
-        el.classList.remove("hc-current", "hc-live", "hc-row-folded");
+      document.querySelectorAll(".hc-current, .hc-live, .hc-row-folded").forEach((el2) => {
+        el2.classList.remove("hc-current", "hc-live", "hc-row-folded");
       });
-      document.querySelectorAll(".ht-debug-row-picker, .ht-debug-handle").forEach((el) => el.remove());
-      document.querySelectorAll(CHEVRON_SELECTOR).forEach((el) => {
-        if (!(el instanceof HTMLElement)) return;
-        el.style.removeProperty("--ht-c-auto-y");
-        el.removeAttribute("data-ht-ready");
+      document.querySelectorAll(".ht-debug-row-picker, .ht-debug-handle").forEach((el2) => el2.remove());
+      document.querySelectorAll(CHEVRON_SELECTOR).forEach((el2) => {
+        if (!(el2 instanceof HTMLElement)) return;
+        el2.style.removeProperty("--ht-c-auto-y");
+        el2.removeAttribute("data-ht-ready");
       });
       for (const handle of document.querySelectorAll(`.listview-overlaybuttons ${HANDLE_SELECTOR}`)) {
         if (!(handle instanceof HTMLElement)) continue;
@@ -2107,6 +2922,7 @@ var plugins = (() => {
       return Boolean(this.settings?.alignControlsToTopLine);
     }
     _schedulePass() {
+      if (this._disabled) return;
       if (this._passRaf) return;
       this._passRaf = requestAnimationFrame(() => {
         this._passRaf = 0;
@@ -2170,11 +2986,11 @@ var plugins = (() => {
     }
     _teardownObservers() {
       try {
-        window.removeEventListener("scroll", this._onScroll, true);
+        if (this._onScroll) window.removeEventListener("scroll", this._onScroll, true);
       } catch {
       }
       try {
-        window.removeEventListener("resize", this._onResize);
+        if (this._onResize) window.removeEventListener("resize", this._onResize);
       } catch {
       }
       try {
@@ -2192,6 +3008,7 @@ var plugins = (() => {
         this._passRaf = 0;
       }
     }
+    /** @param {unknown} row */
     isEditorRow(row) {
       return row instanceof HTMLElement && row.matches(".listitem[data-guid]") && !row.closest(INLINE_REF_GUARD);
     }
@@ -2290,6 +3107,7 @@ var plugins = (() => {
      * used. Headers still center to their (taller) first-line box.
      * @returns {{ top: number, height: number } | null}
      */
+    /** @param {HTMLElement} row */
     getLineTextRect(row) {
       if (!(row instanceof HTMLElement)) return null;
       const line = row.querySelector(":scope > .line-div") || row.querySelector(".line-div");
@@ -2321,12 +3139,13 @@ var plugins = (() => {
       return { top: lineBox.top, height: Math.min(lh, lineBox.height || lh) };
     }
     /** Row the singleton handle is currently bound to (if any). */
+    /** @param {any} handle */
     resolveLiveHandleRow(handle) {
-      const el = handle || document.querySelector(LIVE_HANDLE_SELECTOR);
-      if (!(el instanceof HTMLElement)) return null;
-      const guid = el.getAttribute("data-guid");
+      const el2 = handle || document.querySelector(LIVE_HANDLE_SELECTOR);
+      if (!(el2 instanceof HTMLElement)) return null;
+      const guid = el2.getAttribute("data-guid");
       if (!guid) return null;
-      const panelRoot = this.getPanelRoot(el);
+      const panelRoot = this.getPanelRoot(el2);
       const row = panelRoot?.querySelector?.(`.listitem[data-guid="${CSS.escape(guid)}"]`);
       return row instanceof HTMLElement && this.isEditorRow(row) ? row : null;
     }
@@ -2342,15 +3161,15 @@ var plugins = (() => {
         return;
       }
       const writes = [];
-      const measure = /* @__PURE__ */ __name((el, row) => {
-        const rect = el.getBoundingClientRect();
+      const measure = /* @__PURE__ */ __name((el2, row) => {
+        const rect = el2.getBoundingClientRect();
         if (rect.height < 1) return;
-        const curMt = parseFloat(el.style.marginTop || "0") || 0;
+        const curMt = parseFloat(el2.style.marginTop || "0") || 0;
         const text = this.getLineTextRect(row);
         if (!text) return;
         const delta = text.top + text.height / 2 - (rect.top + rect.height / 2);
         const mt = Math.round((curMt + delta) * 4) / 4;
-        if (Math.abs(mt - curMt) > 0.25) writes.push({ el, mt });
+        if (Math.abs(mt - curMt) > 0.25) writes.push({ el: el2, mt });
       }, "measure");
       for (const chev of document.querySelectorAll(`.listitem[data-guid] > ${CHEVRON_SELECTOR}`)) {
         if (!(chev instanceof HTMLElement)) continue;
@@ -2373,11 +3192,11 @@ var plugins = (() => {
     /** Clear caret/handle margins we applied. */
     _restoreControlMargins(onlyIfPresent = false) {
       const els = document.querySelectorAll(`${CHEVRON_SELECTOR}, ${HANDLE_SELECTOR}`);
-      for (const el of els) {
-        if (!(el instanceof HTMLElement)) continue;
-        if (onlyIfPresent && !el.style.marginTop && !el.style.marginLeft) continue;
-        el.style.removeProperty("margin-top");
-        el.style.removeProperty("margin-left");
+      for (const el2 of els) {
+        if (!(el2 instanceof HTMLElement)) continue;
+        if (onlyIfPresent && !el2.style.marginTop && !el2.style.marginLeft) continue;
+        el2.style.removeProperty("margin-top");
+        el2.style.removeProperty("margin-left");
       }
     }
     // ------------------------------------------------------------------
@@ -2415,26 +3234,27 @@ var plugins = (() => {
      * Temporarily clears handle pointer-events so overlay stacking doesn't lie.
      * @returns {Element | null} the chevron element, or null
      */
+    /** @param {number} x @param {number} y @param {any} handle */
     chevronUnderPoint(x, y, handle) {
       if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
-      const el = handle instanceof HTMLElement ? handle : null;
-      const prev = el ? el.style.getPropertyValue("pointer-events") : "";
-      const prevPri = el ? el.style.getPropertyPriority("pointer-events") : "";
+      const el2 = handle instanceof HTMLElement ? handle : null;
+      const prev = el2 ? el2.style.getPropertyValue("pointer-events") : "";
+      const prevPri = el2 ? el2.style.getPropertyPriority("pointer-events") : "";
       try {
-        if (el) el.style.setProperty("pointer-events", "none", "important");
+        if (el2) el2.style.setProperty("pointer-events", "none", "important");
         const under = document.elementFromPoint(x, y);
         if (!(under instanceof Element)) return null;
         return under.closest(CHEVRON_SELECTOR);
       } catch {
         return null;
       } finally {
-        if (el) {
-          if (prev) el.style.setProperty("pointer-events", prev, prevPri || "");
-          else el.style.removeProperty("pointer-events");
+        if (el2) {
+          if (prev) el2.style.setProperty("pointer-events", prev, prevPri || "");
+          else el2.style.removeProperty("pointer-events");
         }
       }
     }
-    /** @param {PointerEvent} event */
+    /** @param {PointerEvent} _event */
     handlePointerUpCapture(_event) {
       this.setHandlePressing(false);
     }
@@ -2442,6 +3262,7 @@ var plugins = (() => {
     syncAltFromEvent(event) {
       this.setAltHeld(Boolean(event.altKey));
     }
+    /** @param {boolean} held */
     setAltHeld(held) {
       if (held) {
         if (document.body.dataset.etAlt !== "true") document.body.dataset.etAlt = "true";
@@ -2449,6 +3270,7 @@ var plugins = (() => {
         delete document.body.dataset.etAlt;
       }
     }
+    /** @param {boolean} pressing */
     setHandlePressing(pressing) {
       if (pressing) {
         if (document.body.dataset.etPressing !== "true") document.body.dataset.etPressing = "true";
@@ -2518,28 +3340,31 @@ var plugins = (() => {
       if (guid) this.zoomViaPanel(guid, this.getPanelRoot(handle));
     }
     /** The `.panel` element a control lives in (or `document.body` if none). */
-    getPanelRoot(el) {
-      return (el instanceof Element ? el.closest(PANEL_SELECTOR) : null) || document.body;
+    /** @param {any} el */
+    getPanelRoot(el2) {
+      return (el2 instanceof Element ? el2.closest(PANEL_SELECTOR) : null) || document.body;
     }
     /**
      * The SDK panel whose DOM element contains the control's panel, so zoom
      * navigates the panel the user actually clicked in — not merely the focused
      * one (which may be the other split).
      */
+    /** @param {any} panelRoot */
     getSdkPanelForRoot(panelRoot) {
       const active = this.ui?.getActivePanel?.() || null;
       if (!panelRoot || panelRoot === document.body) return active;
       try {
         const panels = this.ui?.getPanels?.() || [];
         const match = panels.find((p) => {
-          const el = p?.getElement?.();
-          return el instanceof Element && (el.contains(panelRoot) || panelRoot.contains(el));
+          const el2 = p?.getElement?.();
+          return el2 instanceof Element && (el2.contains(panelRoot) || panelRoot.contains(el2));
         });
         if (match) return match;
       } catch {
       }
       return active;
     }
+    /** @param {string} guid @param {any} panelRoot */
     zoomViaPanel(guid, panelRoot) {
       const sdkPanel = this.getSdkPanelForRoot(panelRoot);
       if (!sdkPanel?.navigateTo) return false;
@@ -2607,11 +3432,13 @@ var plugins = (() => {
       return merged;
     }
     /** Shallow merge; later argument wins. */
+    /** @param {any} base @param {any} overlay */
     mergeSettings(base, overlay) {
       const a = base && typeof base === "object" ? base : {};
       const b = overlay && typeof overlay === "object" ? overlay : {};
       return { ...a, ...b };
     }
+    /** @param {string} key */
     readLocalSettings(key) {
       try {
         const parsed = JSON.parse(localStorage.getItem(key) || "{}") || {};
@@ -2630,6 +3457,7 @@ var plugins = (() => {
         return null;
       }
     }
+    /** @param {any} raw */
     normalizeSettings(raw) {
       const s = raw && typeof raw === "object" ? raw : {};
       const indentMode = "indentMode" in s || !("outlineMode" in s) ? s.indentMode !== false : s.outlineMode !== false;
@@ -2652,6 +3480,7 @@ var plugins = (() => {
         handleAlignLeft: this.normalizeQuarter(s.handleAlignLeft, HANDLE_ALIGN_DEFAULTS.handleAlignLeft)
       };
     }
+    /** @param {unknown} value @param {number} fallback */
     normalizeQuarter(value, fallback) {
       const n = Number.parseFloat(
         /** @type {any} */
@@ -2659,14 +3488,19 @@ var plugins = (() => {
       );
       return Number.isFinite(n) ? Math.round(n * 4) / 4 : fallback;
     }
+    /** @param {any} s */
     normalizeAltClickOpensMenu(s) {
       if (typeof s.altClickOpensMenu === "boolean") return s.altClickOpensMenu;
       if (typeof s.swapAltClick === "boolean") return s.swapAltClick !== true;
       return DEFAULT_SETTINGS.altClickOpensMenu;
     }
+    /** @param {string} key @param {any} value */
     updateSetting(key, value) {
       if (!Object.prototype.hasOwnProperty.call(DEFAULT_SETTINGS, key)) return;
-      const def = DEFAULT_SETTINGS[key];
+      const def = (
+        /** @type {Record<string, any>} */
+        DEFAULT_SETTINGS[key]
+      );
       let next = value;
       if (typeof def === "boolean") next = Boolean(value);
       else if (typeof def === "string") next = String(value);
@@ -2676,6 +3510,7 @@ var plugins = (() => {
       if (key === "altClickOpensMenu" || key === "alignHandleToCaret") this._renderPanel();
     }
     /** Live per-tick handle-offset edit: save + re-inject the rule, NO re-render. */
+    /** @param {string} key @param {any} rawValue */
     updateHandleAlign(key, rawValue) {
       if (!(key in HANDLE_ALIGN_DEFAULTS)) return;
       const n = Number.parseFloat(rawValue);
@@ -2715,10 +3550,13 @@ var plugins = (() => {
       try {
         const plugin = this.resolveGlobalPluginApi();
         if (!plugin || typeof plugin.saveConfiguration !== "function") return;
-        const conf = plugin.getConfiguration ? plugin.getConfiguration() : {};
+        const conf = (
+          /** @type {Record<string, any>} */
+          plugin.getConfiguration ? plugin.getConfiguration() : {}
+        );
         const settings = this.normalizeSettings(this.settings);
         const current = conf && conf.custom && typeof conf.custom === "object" ? conf.custom.settings : null;
-        if (JSON.stringify(current || {}) === JSON.stringify(settings)) {
+        if (JSON.stringify(this.normalizeSettings(current || {})) === JSON.stringify(settings)) {
           this._configSaveDirty = false;
           return;
         }
@@ -2733,6 +3571,7 @@ var plugins = (() => {
         }
       }
     }
+    /** @returns {{ getConfiguration?: () => any, saveConfiguration?: (conf: any) => Promise<any> } | null} */
     resolveGlobalPluginApi() {
       try {
         const guid = this.getGuid?.();
@@ -2742,12 +3581,17 @@ var plugins = (() => {
         }
       } catch {
       }
-      return typeof this.saveConfiguration === "function" ? this : null;
+      const self = (
+        /** @type {any} */
+        this
+      );
+      return typeof self.saveConfiguration === "function" ? self : null;
     }
     // ------------------------------------------------------------------
     // Applying settings to the DOM
     // ------------------------------------------------------------------
     applySettingsToDom() {
+      if (this._disabled) return;
       const settings = this.normalizeSettings(this.settings);
       this.settings = settings;
       document.body.classList.toggle(INDENT_BODY_CLASS, settings.indentMode);
@@ -2764,7 +3608,8 @@ var plugins = (() => {
     ensureSettingsStyle() {
       let style = this._settingsStyleEl;
       if (!(style instanceof HTMLStyleElement)) {
-        style = document.getElementById(SETTINGS_STYLE_ID);
+        const existing = document.getElementById(SETTINGS_STYLE_ID);
+        style = existing instanceof HTMLStyleElement ? existing : null;
       }
       if (!(style instanceof HTMLStyleElement)) {
         style = document.createElement("style");
@@ -2892,7 +3737,22 @@ var plugins = (() => {
           title: "Editor Tweaks",
           lede: "Uniform line geometry \u2014 indent mode, aligned guide columns \u2014 plus Thymer\u2019s hover controls tuned: click-to-zoom, cursors, and collapsed-line cleanups.",
           icon: "ti-ruler",
-          version: PLUGIN_VERSION
+          version: PLUGIN_VERSION,
+          repository: "https://github.com/akaready/thymer-editor-tweaks",
+          killSwitch: {
+            on: !this._disabled,
+            onToggle: /* @__PURE__ */ __name((nextOn) => {
+              if (this._configFlushTimer) {
+                clearTimeout(this._configFlushTimer);
+                this._configFlushTimer = 0;
+              }
+              this._configSaveDirty = false;
+              void setPluginDisabled(this, !nextOn, PLUGIN_VERSION, {
+                settings: this.normalizeSettings(this.settings)
+              });
+            }, "onToggle")
+          },
+          feedback: { data: this.data }
         }),
         section({
           label: "Indent Mode",
@@ -3003,9 +3863,13 @@ var plugins = (() => {
       return null;
     }
     /** Click-to-open cursor dropdown: search + multi-column previews. */
+    /** @param {{ name: 'zoomCursor' | 'menuCursor', label: string, value: string }} args */
     buildCursorSelect({ name, label, value }) {
       const currentId = normalizeCursorId(value, DEFAULT_SETTINGS[name] || "zoomin");
-      const current = CURSOR_BY_ID[currentId] || CURSOR_BY_ID.zoomin;
+      const current = (
+        /** @type {Record<string, any>} */
+        CURSOR_BY_ID[currentId] || CURSOR_BY_ID.zoomin
+      );
       const listId = `et-cursor-list-${name}`;
       const preview = /* @__PURE__ */ __name((id, cls) => h("img", {
         class: cls,
@@ -3045,8 +3909,8 @@ var plugins = (() => {
             const picker = btn.closest(".et-cursor-picker");
             if (!(picker instanceof HTMLElement)) return;
             const willOpen = btn.getAttribute("aria-expanded") !== "true";
-            this._panelEl?.querySelectorAll?.(".et-cursor-picker").forEach((el) => {
-              if (el instanceof HTMLElement && el !== picker) setOpen(el, false);
+            this._panelEl?.querySelectorAll?.(".et-cursor-picker").forEach((el2) => {
+              if (el2 instanceof HTMLElement && el2 !== picker) setOpen(el2, false);
             });
             setOpen(picker, willOpen);
           }, "onClick")
