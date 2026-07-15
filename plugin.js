@@ -4134,7 +4134,9 @@ ${report}
 					border: none;
 					min-height: 0;
 				}
-				body.${HIDE_TITLEBAR_BODY_CLASS} .app-chrome-panels {
+			`);
+        rules.push(`
+				body.${HIDE_TITLEBAR_BODY_CLASS}:not(.focusmode) .app-chrome-panels {
 					grid-template-rows: 0px minmax(0px, 1fr) 30px !important;
 				}
 			`);
