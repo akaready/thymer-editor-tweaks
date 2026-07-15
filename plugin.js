@@ -3139,7 +3139,7 @@ ${report}
   __name(createSettingsStore, "createSettingsStore");
 
   // plugin.js
-  var PLUGIN_VERSION = "1.3.1";
+  var PLUGIN_VERSION = "1.3.2";
   var ROOT_CLASS = "plg-editor-tweaks";
   var PANEL_TYPE = "editor-tweaks-settings";
   var BODY_CLASS = "et-enabled";
