@@ -2706,6 +2706,50 @@ ${report}
     }
   }
   __name(syncPluginVersionOnLoad, "syncPluginVersionOnLoad");
+  async function healPluginIdentity(plugin, identity) {
+    if (!identity || typeof identity.name !== "string" || !identity.name.trim()) return;
+    const STUB_NAMES = ["New Global Plugin", "New Collection", "My Global Plugin"];
+    const api = await resolveConfigApi(plugin);
+    if (!api) return;
+    let conf = {};
+    try {
+      conf = api.getConfiguration?.() || plugin.getConfiguration?.() || {};
+    } catch {
+      return;
+    }
+    if (conf.ver === void 0 && conf.custom === void 0) return;
+    const hasStubName = typeof conf.name !== "string" || !conf.name.trim() || STUB_NAMES.includes(conf.name.trim());
+    const missingRepo = identity.sourceRepo && conf.__source_repo === void 0;
+    if (!hasStubName && !missingRepo) return;
+    try {
+      let ws = "default";
+      try {
+        ws = plugin.getWorkspaceGuid?.() || "default";
+      } catch {
+      }
+      const guardKey = `tps-identity-healed/${ws}/${identity.name}`;
+      if (sessionStorage.getItem(guardKey) === "1") return;
+      sessionStorage.setItem(guardKey, "1");
+    } catch {
+    }
+    const next = { ...conf };
+    if (hasStubName) {
+      next.name = identity.name;
+      if (identity.icon) next.icon = identity.icon;
+      if (identity.description) next.description = identity.description;
+    }
+    if (missingRepo) {
+      next.__source_repo = identity.sourceRepo;
+      if (conf.__source_files === void 0 && identity.sourceFiles) {
+        next.__source_files = { ...identity.sourceFiles };
+      }
+    }
+    try {
+      await api.saveConfiguration(next);
+    } catch {
+    }
+  }
+  __name(healPluginIdentity, "healPluginIdentity");
 
   // ../../shared/plugin-kill-switch.js
   var MARKER_SYNC_HORIZON_MS = 9e4;
@@ -2807,6 +2851,7 @@ ${report}
     let dirty = false;
     let saveInFlight = false;
     let flushTimer = null;
+    let settleTimer = null;
     const fnv1a = /* @__PURE__ */ __name((s) => {
       let h2 = 2166136261;
       for (let i = 0; i < s.length; i++) {
@@ -3063,6 +3108,43 @@ ${report}
         clearCache();
       },
       /**
+       * Post-push pill settle. A successful push saves the config, which reloads
+       * the plugin; the fresh instance can render its scope pill from a config
+       * snapshot the save hasn't reached yet, and the follow-up config event is
+       * filtered as local (attachLifecycle, by design) — so nothing repaints and
+       * the pill sits on "This device" even though the push landed. Re-read the
+       * synced config on a short interval until it converges: when the adopted
+       * settings changed, `onAdopt(settings)` fires (apply + full panel render);
+       * otherwise `refreshPill()` fires (pill-only repaint). A genuine local
+       * edit still wins — load() carries it through the crash cache. No-ops
+       * instantly when already settled. Call from the push success callback AND
+       * the post-reload panel heal; returns a cancel fn for onUnload.
+       */
+      settleAfterPush({ onAdopt = void 0, refreshPill = void 0, tries = 8, intervalMs = 500 } = {}) {
+        if (settleTimer) {
+          clearTimeout(settleTimer);
+          settleTimer = null;
+        }
+        const tick = /* @__PURE__ */ __name((left) => {
+          const before = JSON.stringify(current);
+          const next = this.load().settings;
+          if (JSON.stringify(next) !== before) onAdopt?.(next);
+          else refreshPill?.();
+          if (left <= 0 || !this.isDiverged()) return;
+          settleTimer = setTimeout(() => {
+            settleTimer = null;
+            tick(left - 1);
+          }, intervalMs);
+        }, "tick");
+        tick(tries);
+        return () => {
+          if (settleTimer) {
+            clearTimeout(settleTimer);
+            settleTimer = null;
+          }
+        };
+      },
+      /**
        * Live-follow: when another device does "apply to all" (or edits propagate),
        * `global-plugin.updated` (or, for CollectionPlugins, the collection event the
        * adopter also wires) fires; re-read this device's synced settings and, if
@@ -3103,6 +3185,10 @@ ${report}
         }
         return () => {
           cancelFlush();
+          if (settleTimer) {
+            clearTimeout(settleTimer);
+            settleTimer = null;
+          }
           try {
             document.removeEventListener("visibilitychange", onHide);
             window.removeEventListener("pagehide", onPageHide);
@@ -3122,7 +3208,7 @@ ${report}
   __name(createSettingsStore, "createSettingsStore");
 
   // plugin.js
-  var PLUGIN_VERSION = "1.3.6";
+  var PLUGIN_VERSION = "1.3.7";
   var ROOT_CLASS = "plg-editor-tweaks";
   var PANEL_TYPE = "editor-tweaks-settings";
   var BODY_CLASS = "et-enabled";
@@ -3240,6 +3326,8 @@ ${report}
       /** @type {any} */
       null
     );
+    /** @type {(() => void) | null} */
+    _cancelPillSettle = null;
     /** @type {(event: MouseEvent) => void} */
     onClickCapture = /* @__PURE__ */ __name((event) => this.handleClickCapture(event), "onClickCapture");
     /** @type {(event: PointerEvent) => void} */
@@ -3291,6 +3379,13 @@ ${report}
       pingInstall("editor-tweaks");
       pingActive("editor-tweaks");
       void syncPluginVersionOnLoad(this, PLUGIN_VERSION);
+      void healPluginIdentity(this, {
+        name: "Editor Tweaks",
+        icon: "ruler",
+        description: "Uniform editor line geometry (indent mode, aligned indent guides), Thymer's native hover controls tuned (click-to-zoom, custom cursors, collapsed-line cleanups), plus window-chrome toggles (hide macOS traffic lights, hide Thymer's titlebar).",
+        sourceRepo: "https://github.com/akaready/thymer-editor-tweaks",
+        sourceFiles: { branch: "main", json: "plugin.json", js: "plugin.js" }
+      });
       this._disabled = readKillSwitch(this);
       this._handlerIds = /** @type {string[]} */
       [];
@@ -3341,6 +3436,7 @@ ${report}
         if (staleRoot && staleRoot.parentElement) {
           this._panelEl = staleRoot.parentElement;
           this._renderPanel();
+          this._refreshScopePillUntilSettled();
         }
       } catch {
       }
@@ -3364,6 +3460,8 @@ ${report}
       setTimeout(() => this._schedulePass(), 1200);
     }
     onUnload() {
+      this._cancelPillSettle?.();
+      this._cancelPillSettle = null;
       for (const id of this._handlerIds || []) {
         try {
           this.events.off(id);
@@ -4014,7 +4112,7 @@ ${report}
               this.ui.addToaster({ title: "Editor Tweaks", message: "Settings applied to all devices", dismissible: true, autoDestroyTime: 3e3 });
             } catch {
             }
-            this._refreshScopePill();
+            this._refreshScopePillUntilSettled();
           });
         }, "onPush"),
         onDiscard: /* @__PURE__ */ __name(() => {
@@ -4033,6 +4131,19 @@ ${report}
     _refreshScopePill() {
       const el2 = this._panelEl?.querySelector?.(".tps-scope");
       if (el2) el2.replaceWith(scopeCluster(this._scopeArgs()));
+    }
+    /** Post-push pill settle — see settleAfterPush in shared/plugin-settings.js. */
+    _refreshScopePillUntilSettled() {
+      this._cancelPillSettle?.();
+      this._cancelPillSettle = this._settingsStore.settleAfterPush({
+        onAdopt: /* @__PURE__ */ __name((settings) => {
+          this.settings = /** @type {EditorTweaksSettings} */
+          settings;
+          this.applySettingsToDom();
+          this._renderPanel();
+        }, "onAdopt"),
+        refreshPill: /* @__PURE__ */ __name(() => this._refreshScopePill(), "refreshPill")
+      });
     }
     // ------------------------------------------------------------------
     // Applying settings to the DOM
