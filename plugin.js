@@ -3122,7 +3122,7 @@ ${report}
   __name(createSettingsStore, "createSettingsStore");
 
   // plugin.js
-  var PLUGIN_VERSION = "1.3.4";
+  var PLUGIN_VERSION = "1.3.5";
   var ROOT_CLASS = "plg-editor-tweaks";
   var PANEL_TYPE = "editor-tweaks-settings";
   var BODY_CLASS = "et-enabled";
@@ -3230,6 +3230,16 @@ ${report}
     static {
       __name(this, "Plugin");
     }
+    // Both are unconditionally reassigned at the top of onLoad() before any
+    // listener/command/panel exists; declared as fields so checkJs doesn't
+    // infer `| undefined` for every later access.
+    /** @type {EditorTweaksSettings} */
+    settings = { ...DEFAULT_SETTINGS, ...HANDLE_ALIGN_DEFAULTS };
+    /** @type {ReturnType<typeof createSettingsStore>} */
+    _settingsStore = (
+      /** @type {any} */
+      null
+    );
     /** @type {(event: MouseEvent) => void} */
     onClickCapture = /* @__PURE__ */ __name((event) => this.handleClickCapture(event), "onClickCapture");
     /** @type {(event: PointerEvent) => void} */
@@ -3298,7 +3308,8 @@ ${report}
         version: PLUGIN_VERSION,
         normalize: /* @__PURE__ */ __name((raw) => this.normalizeSettings(raw), "normalize")
       });
-      this.settings = this._settingsStore.load().settings;
+      this.settings = /** @type {EditorTweaksSettings} */
+      this._settingsStore.load().settings;
       this.cleanupPredecessorState();
       this.cleanupInjectedStyles();
       this.ui.injectCSS(PANEL_CSS);
@@ -3319,7 +3330,8 @@ ${report}
       });
       this._detachSettingsLifecycle = this._settingsStore.attachLifecycle({
         onRemoteChange: /* @__PURE__ */ __name((settings) => {
-          this.settings = settings;
+          this.settings = /** @type {EditorTweaksSettings} */
+          settings;
           this.applySettingsToDom();
           this._renderPanel();
         }, "onRemoteChange")
@@ -3914,6 +3926,7 @@ ${report}
     // ------------------------------------------------------------------
     // Settings — localStorage is the live store; synced config seeds it.
     // ------------------------------------------------------------------
+    /** @param {any} raw @returns {EditorTweaksSettings} */
     normalizeSettings(raw) {
       const s = raw && typeof raw === "object" ? raw : {};
       const indentMode = "indentMode" in s || !("outlineMode" in s) ? s.indentMode !== false : s.outlineMode !== false;
@@ -3962,7 +3975,8 @@ ${report}
       let next = value;
       if (typeof def === "boolean") next = Boolean(value);
       else if (typeof def === "string") next = String(value);
-      this.settings = this._settingsStore.update({ [key]: next }).settings;
+      this.settings = /** @type {EditorTweaksSettings} */
+      this._settingsStore.update({ [key]: next }).settings;
       this.applySettingsToDom();
       if (key === "altClickOpensMenu" || key === "alignHandleToCaret") this._renderPanel();
       else this._refreshScopePill();
@@ -3973,7 +3987,8 @@ ${report}
       if (!(key in HANDLE_ALIGN_DEFAULTS)) return;
       const n = Number.parseFloat(rawValue);
       if (!Number.isFinite(n)) return;
-      this.settings = this._settingsStore.update({ [key]: Math.round(n * 4) / 4 }).settings;
+      this.settings = /** @type {EditorTweaksSettings} */
+      this._settingsStore.update({ [key]: Math.round(n * 4) / 4 }).settings;
       this.writeSettingsStyle();
       this._refreshScopePill();
     }
@@ -3997,7 +4012,8 @@ ${report}
           });
         }, "onPush"),
         onDiscard: /* @__PURE__ */ __name(() => {
-          this.settings = this._settingsStore.discardLocal();
+          this.settings = /** @type {EditorTweaksSettings} */
+          this._settingsStore.discardLocal();
           this.applySettingsToDom();
           this._renderPanel();
           try {
@@ -4188,7 +4204,10 @@ ${report}
         name,
         label,
         desc,
-        checked: Boolean(s[name]),
+        checked: Boolean(
+          /** @type {Record<string, any>} */
+          s[name]
+        ),
         onChange: /* @__PURE__ */ __name((event) => this.updateSetting(
           name,
           /** @type {HTMLInputElement} */
